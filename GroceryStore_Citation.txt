@@ -1,0 +1,45 @@
+ Project Citation: 
+Finlay, Jessica, Li, Mao, Esposito, Michael, Gomez-Lopez, Iris, Khan, Anam, Clarke, Philippa, and Chenoweth, Megan. National Neighborhood Data Archive (NaNDA): Grocery Stores by ZIP Code Tabulation Area, United States, 2003-2017. Ann Arbor, MI: Inter-university Consortium for Political and Social Research [distributor], 2020-10-01. https://doi.org/10.3886/E123042V1
+
+
+https://www.openicpsr.org/openicpsr/project/123042/version/V1/view
+
+
+
+-------------------------------------------------------------------------------
+
+https://www.census.gov/geographies/reference-files/2010/geo/relationship-files.html#par_textimage_674173622
+
+https://www.census.gov/programs-surveys/acs/
+
+-------------------------------------------------------------------------------
+Health Data
+https://chronicdata.cdc.gov/500-Cities-Places/PLACES-Local-Data-for-Better-Health-ZCTA-Data-2021/qnzd-25i4
+
+Measure == 'Obesity among adults aged >=18 years '
+
+Common Core
+Publisher	Centers for Disease Control and Prevention
+Contact Name	PLACES Public Inquiries
+Contact Email	places@cdc.gov
+Bureau Code	009:20
+Program Code	009:020
+Public Access Level	Public Domain
+Data Dictionary	https://chronicdata.cdc.gov/dataset/PLACES-Local-Data-for-Better-Health-ZCTA-Data-2020/qnzd-25i4
+References	https://www.cdc.gov/places/measure-definitions/index.html
+Dataset Information
+Glossary/Methodology 	http://www.cdc.gov/places/
+Topics
+Category	500 Cities & Places
+Tags	
+places, zcta, zip code, brfss, prevalence, risk, behaviors, outcomes, prevention, health, status
+
+
+
+
+-------------------------------------------------------------
+USDA Food Availability
+https://www.ers.usda.gov/data-products/food-availability-per-capita-data-system/food-availability-per-capita-data-system/#Food%20Availability
+
+Food Access Research Atlas
+https://www.ers.usda.gov/data-products/food-access-research-atlas/
