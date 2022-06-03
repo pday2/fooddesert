@@ -33,7 +33,8 @@ healthwide <- pivot_wider(healthFilter, id_cols=c(Year,LocationName,Geolocation,
                           names_from=c(MeasureId),values_from=Data_Value)
 # Rename LocationName to zcta for easy joins!
 healthwide <- healthwide %>% rename(zcta=LocationName)
-write.csv(healthwide,'health.csv')
+# row.name = FALSE - don't need to save row numbers
+write.csv(healthwide,'health.csv',row.names = FALSE)
 
 #---------------------
 # Warning message:
