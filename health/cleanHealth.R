@@ -31,9 +31,13 @@ healthFilter <- health %>% filter(MeasureId=='OBESITY' |
 
 healthwide <- pivot_wider(healthFilter, id_cols=c(Year,LocationName,Geolocation, TotalPopulation),
                           names_from=c(MeasureId),values_from=Data_Value)
+# Rename LocationName to zcta for easy joins!
+healthwide <- healthwide %>% rename(zcta=LocationName)
+write.csv(healthwide,'health.csv')
+
+#---------------------
 # Warning message:
 # Values from `Data_Value` are not uniquely identified; output will contain list-cols.
-write.csv(healthwide,'health.csv')
 health %>%
   dplyr::group_by(Short_Question_Text, MeasureId, Measure) %>%
   dplyr::summarise(n = dplyr::n(), .groups = "drop") %>%

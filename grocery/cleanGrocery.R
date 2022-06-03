@@ -21,5 +21,5 @@ groceryData = grocery2017Filter[c('zcta19', 'year', 'population', 'aland10',
                                   'count_sales_445110', 'popden_sales_445110', 
                                   'aden_sales_445110')]
 sum(is.na(groceryData$count_sales_445110)) # = 0 !!!
-
+groceryData <- groceryData %>% rename(zcta=zcta19)
 write.csv(groceryData,'grocery.csv')
