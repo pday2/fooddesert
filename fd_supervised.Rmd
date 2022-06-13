@@ -16,8 +16,9 @@ library("tidyverse")
 library("MASS") # stepAIC
 library("dplyr")
 library("caret")
-library("randomForest")
+library("randomForest") # RF is really slow on this dataset
 library("xgboost")
+library("lmtest") # Breush-Pagan
 
 if (Sys.info()[1] == "Windows") {
   setwd("C:/Users/peter/My Tresors/Documentsacer/KULeuven/CollAnaBigData/fooddesert-Work")
@@ -61,6 +62,17 @@ This is relevant because, it shows heterogeneous distribution of grocery stores 
 
 Step 1: We import our data. We used dataset XXX / We scraped data from XXX
 
+Grocery store data:
+[National Neighborhood Data Archive (NaNDA): Grocery Stores by ZIP Code Tabulation Area, United States, 2003-2017](https://www.openicpsr.org/openicpsr/project/123042/version/V1/view)
+
+Demographic data:
+[US Census: American Community Survey (ACS)](https://www.census.gov/programs-surveys/acs/)
+
+Health data:
+[US CDC: PLACES: Local Data for Better Health, ZCTA Data 2021 release ](https://chronicdata.cdc.gov/500-Cities-Places/PLACES-Local-Data-for-Better-Health-ZCTA-Data-2021/qnzd-25i4)
+
+
+
 ```{r loadData}
 grocery <- read.csv('./grocery/grocery.csv')
 health <- read.csv('./health/health.csv')
@@ -72,6 +84,7 @@ edu <- read.csv('./education/edu.csv')
 # Join, clean, variable selection part 1
 
 ```{r clean}
+# data has all variables, dat will be used for analysis
 data <- inner_join(grocery, health, by='zcta')
 data <- inner_join(data, race, by='zcta')
 data <- inner_join(data, income, by='zcta')
@@ -88,6 +101,22 @@ dat <- data[-c(1,2,8,9)]
 dat <- dat[-c(21,22,23,24,25,26,27,28,29,30,31,32,33)]
 # and mixed race seems to have problems... multicollinearity?
 dat <- dat[-19]
+# Removing population stats due to multicollinearity 
+dat <- dat[-c(1,6,12)]
+```
+
+# Some interesting zip codes
+
+```{r zips}
+summary(data$OBESITY)
+summary(data$grocery_persqmile)
+summary(data$grocery_count)
+histogram(data$grocery_count)
+# zcta = 10*** = NYC
+# Lawrence, Massachusetts 01841
+# Boston, Massachusetts 02128
+# Hartford, Connecticut 06106
+data %>% filter(grocery_count>50)
 ```
 
 
@@ -104,14 +133,28 @@ valid <- testvalid[validtest, ]
 test <- testvalid[!validtest, ]
 
 
-# Obesity is variable 7
-X_train <- train[-7]
-y_train <- train[7]
-X_valid <- valid[-7]
-y_valid <- valid[7]
-X_test <- test[-7]
-y_test <- test[7]
+# Obesity is variable 5
+X_train <- train[-5]
+y_train <- train[5]
+X_valid <- valid[-5]
+y_valid <- valid[5]
+X_test <- test[-5]
+y_test <- test[5]
 ```
+
+## Histogram of Obesity
+```{r}
+# maybe skews left?
+histogram(train$OBESITY)
+```
+
+## Obesity vs 
+```{r}
+plot(train$grocery_persqmile, train$OBESITY)
+abline(lm(train$OBESITY~train$grocery_persqmile))
+```
+
+
 
 # Variable Selection - Two Methods
 
@@ -119,13 +162,13 @@ y_test <- test[7]
 fit.full <- lm(OBESITY ~ ., data=train)
 stepAIC(fit.full, direction = "backward")
 # Backward step selection removes:
-#   pacific_islan, DEPRESSION, asian, grocery_per1k
+#   white, DEPRESSION
 
 ```
 
 ```{r lm}
 # Using results from backward step to fit OLS model
-data.step <- train[-c(4,8,16,17)]
+data.step <- train[-c(6,10)]
 lm.fitstep <- lm(OBESITY ~ ., data = data.step)
 summary(lm.fitstep)
 ```
@@ -134,27 +177,71 @@ summary(lm.fitstep)
 ```{r FTest}
 # Based on F-value
 dropterm(fit.full, test = "F")
-fit1 <- update(fit.full, ~ . - pacific_islan)
+fit1 <- update(fit.full, ~ . - white)
 dropterm(fit1, sorted = TRUE, test = "F")
 
 fit2 <- update(fit1, ~ . - DEPRESSION)
 dropterm(fit2, sorted = TRUE, test = "F")
 
-fit3 <- update(fit2, ~ . - asian)
+# grocery_per_1k not signif
+fit3 <- update(fit2, ~ . - grocery_per1k)
 dropterm(fit3, sorted = TRUE, test = "F")
 
-fit4 <- update(fit3, ~ . - grocery_per1k)
-dropterm(fit4, sorted = TRUE, test = "F")
 
-fit5 <- update(fit4, ~ . - population)
-dropterm(fit5, sorted = TRUE, test = "F")
-
-summary(fit5)
+summary(fit3)
 ```
+
+# Diagnostics on fit 3
+```{r diagsnostics}
+pred = predict(fit3)
+sres = stdres(fit3)
+student = rstandard(fit3)
+plot(pred, sres, pch=16); abline(h=0)
+plot(pred, student, pch=16); abline(h=0)
+plot(train$OBESITY, sres, pch=16); abline(h=0)
+```
+
+```{r residualPlot}
+# residual values increase with obesity, though variance doesn't change much
+plot(sres, xlab = "Index", ylab = "Standardized residual", ylim = c(-4.0,4.0))
+abline(h = -3.0, lty = 2)
+abline(h = 3.0, lty = 2)
+```
+
+```{r diagsnostics2}
+boxplot(student, pch=16)
+# that's a lot of potential outliers? but maybe ok for 17k obs?
+
+qqnorm(student, pch=16); qqline(student)
+# May not be normal at the ends, middle section looks good
+
+# Shapiro-Wilk test for normality
+# H0: model errors are normally distributed
+# !must have 5000 or fewer observations! we have 17k in training
+#shapiro.test(student)
+
+
+# Breusch-Pagan - test for Homoskedasticity
+# H0: residuals are homoskedastic
+bptest(fit3, studentize=F)
+# BP = 840.07, df = 20, p-value < 2.2e-16
+# Reject H0 in favor of H1 - residuals are heteroskedastic
+
+boxcox(fit3, lambda=seq(-2, 2, 0.1), plotit = T)
+# lambda ~ 1 => no transformation
+
+# Multicollinearity?
+multico = solve(cor(train[, -5]))
+summary(multico)
+# No values above 10! 
+# Multicollinearity fixed by removing population variables
+```
+
+
 
 ```{r lm.F}
 # Using results from manual F-Test variable selection to fit OLS model
-data.F <- train[-c(1,4,8,16,17)]
+data.F <- train[-c(3,6,10)]
 lm.fitF <- lm(OBESITY ~ ., data = data.F)
 summary(lm.fitF)
 ```
@@ -170,8 +257,8 @@ xgbtrain = xgb.DMatrix(as.matrix(sapply(X_train, as.numeric)), label=y_train$OBE
 xgbvalid = xgb.DMatrix(as.matrix(sapply(X_valid, as.numeric)), label=y_valid$OBESITY)
 watchlist <- list(train=xgbtrain, test=xgbvalid)
 
-# max.depth = 5 and nrounds=10 yielded minimum test-rmse
-xgb.fit <- xgb.train(data=xgbtrain, max.depth = 5, eta = 1, nthread = 2, nrounds = 10, 
+# max.depth = 4 and nrounds=10 yielded minimum test-rmse
+xgb.fit <- xgb.train(data=xgbtrain, max.depth = 4, eta = 1, nthread = 2, nrounds = 10, 
                    watchlist=watchlist, objective = "reg:squarederror")
 # linear boosting - not as good
 lin.fit <- xgb.train(data=xgbtrain, booster = "gblinear", nthread = 2, nrounds=10, 
@@ -189,7 +276,7 @@ print(importance_matrix)
 xgb.plot.importance(importance_matrix = importance_matrix)
 ```
 
-xgboost's gain shows that percent of the population of age 45-65 with a bachelor's degree or greater, mean income,  chronic heart disease, percent of population which is black and percent of population with depression are the five most important variables in determining percent of population with obesity. Number of grocery stores per square mile is the seventh most important variable.
+xgboost's gain shows that percent of the population of age 45-65 with a bachelor's degree or greater, mean income,  percent of population with chronic heart disease, percent of population which is black and percent of population with cancer are the five most important variables in determining percent of population with obesity. Number of grocery stores per square mile is the eigth most important variable.
 
 ```{r xgboost2}
 # View model trees
@@ -200,9 +287,12 @@ xgboost's gain shows that percent of the population of age 45-65 with a bachelor
 
 # For example tree with depth = 2... plotting a 5 level tree is not helpful
 # With this many variables, its still not visible
-xgb.fit2 <- xgb.train(data=xgbtrain, max.depth = 5, eta = 1, nthread = 2, nrounds = 10, 
+xgb.fit2 <- xgb.train(data=xgbtrain, max.depth = 4, eta = 1, nthread = 2, nrounds = 10, 
                      watchlist=watchlist, objective = "reg:squarederror")
 xgb.plot.tree(model = xgb.fit2, trees=0) # just from 0th root node
 ```
 
+# Grocery Store Data
+Project Citation: 
+Finlay, Jessica, Li, Mao, Esposito, Michael, Gomez-Lopez, Iris, Khan, Anam, Clarke, Philippa, and Chenoweth, Megan. National Neighborhood Data Archive (NaNDA): Grocery Stores by ZIP Code Tabulation Area, United States, 2003-2017. Ann Arbor, MI: Inter-university Consortium for Political and Social Research [distributor], 2020-10-01. https://doi.org/10.3886/E123042V1
 
