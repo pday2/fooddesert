@@ -239,7 +239,7 @@ summary(multico)
 # Multicollinearity fixed by removing population variables
 ```
 
-
+The fitted value versus residual plot shows that there may not be much concern with heteroskedasticity. However, since the Breusch-Pagan test rejected homoskedasticty (as did the White test) , We fit a weighted least squares model, which did not improve the situation as far as Breusch-Pagan or White are concerned. We thus will stick with OLS as done in fit3 for ease of interpretability.
 
 ```{r lm.F}
 # Using results from manual F-Test variable selection to fit OLS model

@@ -627,6 +627,7 @@ summary(multico)</code></pre>
 ##  Max.   : 3.647515   Max.   : 1.828711   Max.   : 2.33695</code></pre>
 <pre class="r"><code># Now, no values above 10! 
 # Multicollinearity fixed by removing population variables</code></pre>
+<p>The fitted value versus residual plot shows that there may not be much concern with heteroskedasticity. However, since the Breusch-Pagan test rejected homoskedasticty (as did the White test) , We fit a weighted least squares model, which did not improve the situation as far as Breusch-Pagan or White are concerned. We thus will stick with OLS as done in fit3 for ease of interpretability.</p>
 <pre class="r"><code># Using results from manual F-Test variable selection to fit OLS model
 data.F &lt;- train[-c(3,6,10)]
 lm.fitF &lt;- lm(OBESITY ~ ., data = data.F)
@@ -695,16 +696,16 @@ xgb.fit &lt;- xgb.train(data=xgbtrain, max.depth = 4, eta = 1, nthread = 2, nrou
 <pre class="r"><code># linear boosting - not as good
 lin.fit &lt;- xgb.train(data=xgbtrain, booster = &quot;gblinear&quot;, nthread = 2, nrounds=10, 
                  watchlist=watchlist, objective = &quot;reg:squarederror&quot;)</code></pre>
-<pre><code>## [1]  train-rmse:7.340872 test-rmse:7.586308 
-## [2]  train-rmse:5.517943 test-rmse:5.599693 
-## [3]  train-rmse:4.813724 test-rmse:4.868710 
-## [4]  train-rmse:4.487681 test-rmse:4.523627 
-## [5]  train-rmse:4.309506 test-rmse:4.333400 
-## [6]  train-rmse:4.203328 test-rmse:4.218504 
-## [7]  train-rmse:4.132558 test-rmse:4.142800 
-## [8]  train-rmse:4.079554 test-rmse:4.087300 
-## [9]  train-rmse:4.036325 test-rmse:4.043089 
-## [10] train-rmse:3.998814 test-rmse:4.005506</code></pre>
+<pre><code>## [1]  train-rmse:7.339339 test-rmse:7.585119 
+## [2]  train-rmse:5.516810 test-rmse:5.598462 
+## [3]  train-rmse:4.813405 test-rmse:4.868504 
+## [4]  train-rmse:4.474941 test-rmse:4.511416 
+## [5]  train-rmse:4.298684 test-rmse:4.321988 
+## [6]  train-rmse:4.195483 test-rmse:4.210533 
+## [7]  train-rmse:4.126370 test-rmse:4.136690 
+## [8]  train-rmse:4.074335 test-rmse:4.082234 
+## [9]  train-rmse:4.031713 test-rmse:4.038637 
+## [10] train-rmse:3.994874 test-rmse:4.001707</code></pre>
 <pre class="r"><code>summary(xgb.fit)</code></pre>
 <pre><code>##                Length Class              Mode       
 ## handle             1  xgb.Booster.handle externalptr
