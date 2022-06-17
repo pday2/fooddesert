@@ -16,9 +16,11 @@ library("tidyverse")
 library("MASS") # stepAIC
 library("dplyr")
 library("caret")
-library("randomForest") # RF is really slow on this dataset
-library("xgboost")
+library("randomForest")
 library("lmtest") # Breush-Pagan
+library("skedastic") # White test for heteroskedasticity
+library("car") # boxCox, Box-Tidwell
+library("xgboost")
 
 if (Sys.info()[1] == "Windows") {
   setwd("C:/Users/peter/My Tresors/Documentsacer/KULeuven/CollAnaBigData/fooddesert-Work")
@@ -238,6 +240,47 @@ summary(multico)
 # Now, no values above 10! 
 # Multicollinearity fixed by removing population variables
 ```
+
+```{r WLS, include=FALSE}
+# Weighted Least Squares Analysis
+datafit3 <- train[-c(3,6,10)]
+# Fit using OLS
+fit <- lm(OBESITY~., data = datafit3)
+# Calculate residuals
+resid <- residuals(fit)
+# regress sq or abs resids on regressors from OLS
+# abs(resid) estimates sigma
+# resid^2 estimates sigma^2
+stdev <- lm(abs(resid)~., data = datafit3[-4])
+summary(stdev)
+# Calculate weights from estimated Std Dev w=1/s^2
+weights <- 1/stdev$fitted^2
+# Fit regression with weights
+wls <- lm(OBESITY~., data = datafit3, weights=weights)
+summary(wls)
+
+# Breusch-Pagan test - p<0.001, still heteroskedastic
+bptest(wls, studentize=F)
+wstudent = rstandard(wls)
+qqnorm(wstudent, pch=16); qqline(wstudent)
+
+# These will still show heteroskedasticity
+plot(datafit3$OBESITY,resid(wls))
+# With weights, heteroskedasticity should now be gone
+plot(datafit3$OBESITY,resid(wls)*sqrt(weights),ylab="Weighted residuals")
+
+# Fitted/Predicted vs residuals
+wpred = predict(wls)
+wsres = stdres(wls)
+wstudent = rstandard(wls)
+plot(wpred, wsres, pch=16); abline(h=0)
+plot(wpred, wstudent, pch=16); abline(h=0)
+
+skedastic::white_lm(fit3)
+skedastic::white_lm(wls)
+
+```
+
 
 The fitted value versus residual plot shows that there may not be much concern with heteroskedasticity. However, since the Breusch-Pagan test rejected homoskedasticty (as did the White test) , We fit a weighted least squares model, which did not improve the situation as far as Breusch-Pagan or White are concerned. We thus will stick with OLS as done in fit3 for ease of interpretability.
 

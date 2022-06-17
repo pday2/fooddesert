@@ -696,16 +696,16 @@ xgb.fit &lt;- xgb.train(data=xgbtrain, max.depth = 4, eta = 1, nthread = 2, nrou
 <pre class="r"><code># linear boosting - not as good
 lin.fit &lt;- xgb.train(data=xgbtrain, booster = &quot;gblinear&quot;, nthread = 2, nrounds=10, 
                  watchlist=watchlist, objective = &quot;reg:squarederror&quot;)</code></pre>
-<pre><code>## [1]  train-rmse:7.339339 test-rmse:7.585119 
-## [2]  train-rmse:5.516810 test-rmse:5.598462 
-## [3]  train-rmse:4.813405 test-rmse:4.868504 
-## [4]  train-rmse:4.474941 test-rmse:4.511416 
-## [5]  train-rmse:4.298684 test-rmse:4.321988 
-## [6]  train-rmse:4.195483 test-rmse:4.210533 
-## [7]  train-rmse:4.126370 test-rmse:4.136690 
-## [8]  train-rmse:4.074335 test-rmse:4.082234 
-## [9]  train-rmse:4.031713 test-rmse:4.038637 
-## [10] train-rmse:3.994874 test-rmse:4.001707</code></pre>
+<pre><code>## [1]  train-rmse:7.340872 test-rmse:7.586308 
+## [2]  train-rmse:5.518017 test-rmse:5.599761 
+## [3]  train-rmse:4.813757 test-rmse:4.868742 
+## [4]  train-rmse:4.474935 test-rmse:4.511307 
+## [5]  train-rmse:4.298548 test-rmse:4.321785 
+## [6]  train-rmse:4.195306 test-rmse:4.210312 
+## [7]  train-rmse:4.125781 test-rmse:4.136840 
+## [8]  train-rmse:4.072835 test-rmse:4.080878 
+## [9]  train-rmse:4.030474 test-rmse:4.037520 
+## [10] train-rmse:3.993213 test-rmse:3.999924</code></pre>
 <pre class="r"><code>summary(xgb.fit)</code></pre>
 <pre><code>##                Length Class              Mode       
 ## handle             1  xgb.Booster.handle externalptr
