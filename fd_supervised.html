@@ -696,16 +696,16 @@ xgb.fit &lt;- xgb.train(data=xgbtrain, max.depth = 4, eta = 1, nthread = 2, nrou
 <pre class="r"><code># linear boosting - not as good
 lin.fit &lt;- xgb.train(data=xgbtrain, booster = &quot;gblinear&quot;, nthread = 2, nrounds=10, 
                  watchlist=watchlist, objective = &quot;reg:squarederror&quot;)</code></pre>
-<pre><code>## [1]  train-rmse:7.340872 test-rmse:7.586308 
-## [2]  train-rmse:5.518017 test-rmse:5.599761 
-## [3]  train-rmse:4.813757 test-rmse:4.868742 
-## [4]  train-rmse:4.474935 test-rmse:4.511307 
-## [5]  train-rmse:4.298548 test-rmse:4.321785 
-## [6]  train-rmse:4.195306 test-rmse:4.210312 
-## [7]  train-rmse:4.125781 test-rmse:4.136840 
-## [8]  train-rmse:4.072835 test-rmse:4.080878 
-## [9]  train-rmse:4.030474 test-rmse:4.037520 
-## [10] train-rmse:3.993213 test-rmse:3.999924</code></pre>
+<pre><code>## [1]  train-rmse:7.340840 test-rmse:7.586282 
+## [2]  train-rmse:5.518034 test-rmse:5.599766 
+## [3]  train-rmse:4.813796 test-rmse:4.868779 
+## [4]  train-rmse:4.470177 test-rmse:4.510454 
+## [5]  train-rmse:4.288824 test-rmse:4.312803 
+## [6]  train-rmse:4.188060 test-rmse:4.203715 
+## [7]  train-rmse:4.120241 test-rmse:4.131230 
+## [8]  train-rmse:4.070279 test-rmse:4.081003 
+## [9]  train-rmse:4.026289 test-rmse:4.034962 
+## [10] train-rmse:3.989498 test-rmse:3.997760</code></pre>
 <pre class="r"><code>summary(xgb.fit)</code></pre>
 <pre><code>##                Length Class              Mode       
 ## handle             1  xgb.Booster.handle externalptr
@@ -770,10 +770,26 @@ xgb.fit2 &lt;- xgb.train(data=xgbtrain, max.depth = 4, eta = 1, nthread = 2, nro
 <div id="htmlwidget-906c3d357cc4158d2dca" style="width:672px;height:480px;" class="grViz html-widget"></div>
 <script type="application/json" data-for="htmlwidget-906c3d357cc4158d2dca">{"x":{"diagram":"digraph {\n\ngraph [layout = \"dot\",\n       rankdir = \"LR\"]\n\nnode [color = \"DimGray\",\n      style = \"filled\",\n      fontname = \"Helvetica\"]\n\nedge [color = \"DimGray\",\n     arrowsize = \"1.5\",\n     arrowhead = \"vee\",\n     fontname = \"Helvetica\"]\n\n  \"1\" [label = \"Tree 0\nX45.64_gtbach\nCover: 17122\nGain: 150300\", shape = \"rectangle\", fontcolor = \"black\", fillcolor = \"Beige\"] \n  \"2\" [label = \"mean_income\nCover: 12512\nGain: 36647\", shape = \"rectangle\", fontcolor = \"black\", fillcolor = \"Beige\"] \n  \"3\" [label = \"mean_income\nCover: 4610\nGain: 23275.5\", shape = \"rectangle\", fontcolor = \"black\", fillcolor = \"Beige\"] \n  \"4\" [label = \"black\nCover: 4248\nGain: 5632.5\", shape = \"rectangle\", fontcolor = \"black\", fillcolor = \"Beige\"] \n  \"5\" [label = \"CHD\nCover: 8264\nGain: 13371\", shape = \"rectangle\", fontcolor = \"black\", fillcolor = \"Beige\"] \n  \"6\" [label = \"gt65_gtbach\nCover: 2925\nGain: 6419.75\", shape = \"rectangle\", fontcolor = \"black\", fillcolor = \"Beige\"] \n  \"7\" [label = \"grocery_persqmile\nCover: 1685\nGain: 6267.625\", shape = \"rectangle\", fontcolor = \"black\", fillcolor = \"Beige\"] \n  \"8\" [label = \"DEPRESSION\nCover: 2654\nGain: 4157\", shape = \"rectangle\", fontcolor = \"black\", fillcolor = \"Beige\"] \n  \"9\" [label = \"mean_income\nCover: 1594\nGain: 4059.25\", shape = \"rectangle\", fontcolor = \"black\", fillcolor = \"Beige\"] \n  \"10\" [label = \"asian\nCover: 2810\nGain: 4406.75\", shape = \"rectangle\", fontcolor = \"black\", fillcolor = \"Beige\"] \n  \"11\" [label = \"CHOLSCREEN\nCover: 5454\nGain: 2467\", shape = \"rectangle\", fontcolor = \"black\", fillcolor = \"Beige\"] \n  \"12\" [label = \"CHD\nCover: 1420\nGain: 2529.25\", shape = \"rectangle\", fontcolor = \"black\", fillcolor = \"Beige\"] \n  \"13\" [label = \"CHD\nCover: 1505\nGain: 1433.125\", shape = \"rectangle\", fontcolor = \"black\", fillcolor = \"Beige\"] \n  \"14\" [label = \"gt65_gtbach\nCover: 893\nGain: 2019.5\", shape = \"rectangle\", fontcolor = \"black\", fillcolor = \"Beige\"] \n  \"15\" [label = \"grocery_persqmile\nCover: 792\nGain: 1642.375\", shape = \"rectangle\", fontcolor = \"black\", fillcolor = \"Beige\"] \n  \"16\" [label = \"Leaf\nCover: 2212\nValue: 36.4139633\", shape = \"oval\", fontcolor = \"black\", fillcolor = \"Khaki\"] \n  \"17\" [label = \"Leaf\nCover: 442\nValue: 40.284874\", shape = \"oval\", fontcolor = \"black\", fillcolor = \"Khaki\"] \n  \"18\" [label = \"Leaf\nCover: 320\nValue: 43.4604378\", shape = \"oval\", fontcolor = \"black\", fillcolor = \"Khaki\"] \n  \"19\" [label = \"Leaf\nCover: 1274\nValue: 38.7717628\", shape = \"oval\", fontcolor = \"black\", fillcolor = \"Khaki\"] \n  \"20\" [label = \"Leaf\nCover: 2611\nValue: 32.928791\", shape = \"oval\", fontcolor = \"black\", fillcolor = \"Khaki\"] \n  \"21\" [label = \"Leaf\nCover: 199\nValue: 27.5044994\", shape = \"oval\", fontcolor = \"black\", fillcolor = \"Khaki\"] \n  \"22\" [label = \"Leaf\nCover: 2950\nValue: 36.1096573\", shape = \"oval\", fontcolor = \"black\", fillcolor = \"Khaki\"] \n  \"23\" [label = \"Leaf\nCover: 2504\nValue: 34.453373\", shape = \"oval\", fontcolor = \"black\", fillcolor = \"Khaki\"] \n  \"24\" [label = \"Leaf\nCover: 893\nValue: 31.0646534\", shape = \"oval\", fontcolor = \"black\", fillcolor = \"Khaki\"] \n  \"25\" [label = \"Leaf\nCover: 527\nValue: 34.3450775\", shape = \"oval\", fontcolor = \"black\", fillcolor = \"Khaki\"] \n  \"26\" [label = \"Leaf\nCover: 262\nValue: 26.4372616\", shape = \"oval\", fontcolor = \"black\", fillcolor = \"Khaki\"] \n  \"27\" [label = \"Leaf\nCover: 1243\nValue: 29.6788578\", shape = \"oval\", fontcolor = \"black\", fillcolor = \"Khaki\"] \n  \"28\" [label = \"Leaf\nCover: 670\nValue: 28.8198204\", shape = \"oval\", fontcolor = \"black\", fillcolor = \"Khaki\"] \n  \"29\" [label = \"Leaf\nCover: 223\nValue: 24.741518\", shape = \"oval\", fontcolor = \"black\", fillcolor = \"Khaki\"] \n  \"30\" [label = \"Leaf\nCover: 727\nValue: 24.2384624\", shape = \"oval\", fontcolor = \"black\", fillcolor = \"Khaki\"] \n  \"31\" [label = \"Leaf\nCover: 65\nValue: 18.2000008\", shape = \"oval\", fontcolor = \"black\", fillcolor = \"Khaki\"] \n\"1\"->\"2\" [label = \"< 30.3499985\", style = \"bold\"] \n\"2\"->\"4\" [label = \"< 60066\", style = \"bold\"] \n\"3\"->\"6\" [label = \"< 115976\", style = \"bold\"] \n\"4\"->\"8\" [label = \"< 170.5\", style = \"bold\"] \n\"5\"->\"10\" [label = \"< 6.35000038\", style = \"bold\"] \n\"6\"->\"12\" [label = \"< 31.75\", style = \"bold\"] \n\"7\"->\"14\" [label = \"< 0.411578834\", style = \"bold\"] \n\"8\"->\"16\" [label = \"< 27.4500008\", style = \"bold\"] \n\"9\"->\"18\" [label = \"< 44705.5\", style = \"bold\"] \n\"10\"->\"20\" [label = \"< 3309\", style = \"bold\"] \n\"11\"->\"22\" [label = \"< 89.75\", style = \"bold\"] \n\"12\"->\"24\" [label = \"< 6.64999962\", style = \"bold\"] \n\"13\"->\"26\" [label = \"< 4.25\", style = \"bold\"] \n\"14\"->\"28\" [label = \"< 55.4500008\", style = \"bold\"] \n\"15\"->\"30\" [label = \"< 11.0454597\", style = \"bold\"] \n\"1\"->\"3\" [style = \"bold\", style = \"solid\"] \n\"2\"->\"5\" [style = \"solid\", style = \"solid\"] \n\"3\"->\"7\" [style = \"solid\", style = \"solid\"] \n\"4\"->\"9\" [style = \"solid\", style = \"solid\"] \n\"5\"->\"11\" [style = \"solid\", style = \"solid\"] \n\"6\"->\"13\" [style = \"solid\", style = \"solid\"] \n\"7\"->\"15\" [style = \"solid\", style = \"solid\"] \n\"8\"->\"17\" [style = \"solid\", style = \"solid\"] \n\"9\"->\"19\" [style = \"solid\", style = \"solid\"] \n\"10\"->\"21\" [style = \"solid\", style = \"solid\"] \n\"11\"->\"23\" [style = \"solid\", style = \"solid\"] \n\"12\"->\"25\" [style = \"solid\", style = \"solid\"] \n\"13\"->\"27\" [style = \"solid\", style = \"solid\"] \n\"14\"->\"29\" [style = \"solid\", style = \"solid\"] \n\"15\"->\"31\" [style = \"solid\", style = \"solid\"] \n}","config":{"engine":"dot","options":null}},"evals":[],"jsHooks":[]}</script>
 </div>
+<div id="compare-models---rmse" class="section level1">
+<h1>Compare Models - RMSE</h1>
+<pre class="r"><code># Compare RMSE of linear and XGB Models
+xgbtest = xgb.DMatrix(as.matrix(sapply(X_test, as.numeric)), label=y_test$OBESITY)
+
+linpred &lt;- predict.lm(fit3, test)
+xgbpred &lt;- predict(xgb.fit, xgbtest)
+
+# RMSE of linear model on test set
+sqrt(mean((test$OBESITY - linpred)^2))</code></pre>
+<pre><code>## [1] 2.986013</code></pre>
+<pre class="r"><code># RMSE of XGBoost model on test set
+sqrt(mean((test$OBESITY - xgbpred)^2))</code></pre>
+<pre><code>## [1] 3.034223</code></pre>
+</div>
 <div id="supervised-analysis-conclusion" class="section level1">
 <h1>Supervised Analysis Conclusion</h1>
 <p>When controlling for variables such as income, race, education and various illnesses, we have found a negative association between the number of grocery stores per square mile in a zip code area and percent of inhabitants who are obese. For every increase of one grocery store per square mile, obesity decreases by 0.0867%. We found some other interesting associations with obesity. As the percentage of inhabitants who are black increases, so does obesity. Obesity decreases with income and education.</p>
 <p>Using xgboost to look at non-linear associations with obesity, we found that education (percent of inhabitants between 45 and 65 years of age with a bachelors or greater), mean income and being black are important variables in determining obesity. Number of grocery stores per square mile, to a lesser degree, is also important to explaining obesity.</p>
+<p>With a RMSE of 2.986 our linear model, fit3, outperformed the XGBoost model, which had a RMSE of 3.034, on the test data.</p>
 </div>
 <div id="grocery-store-data" class="section level1">
 <h1>Grocery Store Data</h1>

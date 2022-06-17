@@ -337,11 +337,30 @@ xgb.fit2 <- xgb.train(data=xgbtrain, max.depth = 4, eta = 1, nthread = 2, nround
 xgb.plot.tree(model = xgb.fit2, trees=0) # just from 0th root node
 ```
 
+# Compare Models - RMSE
+
+```{r}
+# Compare RMSE of linear and XGB Models
+xgbtest = xgb.DMatrix(as.matrix(sapply(X_test, as.numeric)), label=y_test$OBESITY)
+
+linpred <- predict.lm(fit3, test)
+xgbpred <- predict(xgb.fit, xgbtest)
+
+# RMSE of linear model on test set
+sqrt(mean((test$OBESITY - linpred)^2))
+
+# RMSE of XGBoost model on test set
+sqrt(mean((test$OBESITY - xgbpred)^2))
+```
+
+
 # Supervised Analysis Conclusion
 
 When controlling for variables such as income, race, education and various illnesses, we have found a negative association between the number of grocery stores per square mile in a zip code area and percent of inhabitants who are obese. For every increase of one grocery store per square mile, obesity decreases by 0.0867%. We found some other interesting associations with obesity. As the percentage of inhabitants who are black increases, so does obesity. Obesity decreases with income and education. 
 
 Using xgboost to look at non-linear associations with obesity, we found that education (percent of inhabitants between 45 and 65 years of age with a bachelors or greater), mean income and being black are important variables in determining obesity. Number of grocery stores per square mile, to a lesser degree, is also important to explaining obesity.
+
+With a RMSE of 2.986 our linear model, fit3, outperformed the XGBoost model, which had a RMSE of 3.034, on the test data. 
 
 
 # Grocery Store Data
