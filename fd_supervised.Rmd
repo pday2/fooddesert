@@ -148,7 +148,7 @@ y_test <- test[5]
 histogram(train$OBESITY)
 ```
 
-## Obesity vs 
+## Obesity vs Grocery Stores per square mile
 ```{r}
 plot(train$grocery_persqmile, train$OBESITY)
 abline(lm(train$OBESITY~train$grocery_persqmile))
@@ -192,12 +192,14 @@ summary(fit3)
 ```
 
 # Diagnostics on fit 3
-```{r diagsnostics}
+```{r diagnostics}
 pred = predict(fit3)
 sres = stdres(fit3)
 student = rstandard(fit3)
+# Variance looks fairly stable
 plot(pred, sres, pch=16); abline(h=0)
 plot(pred, student, pch=16); abline(h=0)
+# Variance increases with OBS but not wider/narrower spread
 plot(train$OBESITY, sres, pch=16); abline(h=0)
 ```
 
@@ -208,7 +210,7 @@ abline(h = -3.0, lty = 2)
 abline(h = 3.0, lty = 2)
 ```
 
-```{r diagsnostics2}
+```{r diagnostics2}
 boxplot(student, pch=16)
 # that's a lot of potential outliers? but maybe ok for 17k obs?
 
@@ -233,7 +235,7 @@ boxcox(fit3, lambda=seq(-2, 2, 0.1), plotit = T)
 # Multicollinearity?
 multico = solve(cor(train[, -5]))
 summary(multico)
-# No values above 10! 
+# Now, no values above 10! 
 # Multicollinearity fixed by removing population variables
 ```
 
@@ -266,9 +268,9 @@ lin.fit <- xgb.train(data=xgbtrain, booster = "gblinear", nthread = 2, nrounds=1
 summary(xgb.fit)
 
 # Plot of variable importance
-# Gain is the improvement in accuracy brought by a feature to the branches it is on
-# Cover measures the relative quantity of observations concerned by a feature
-# Frequency is a simpler way to measure the Gain. It just counts the number of
+# Gain - is the improvement in accuracy brought by a feature to the branches it is on
+# Cover - measures the relative quantity of observations concerned by a feature
+# Frequency - is a simpler way to measure the Gain. It just counts the number of
 #   times a feature is used in all generated trees
 #   !You should not use it (unless you know why you want to use it)!
 importance_matrix <- xgb.importance(model = xgb.fit)
@@ -291,6 +293,13 @@ xgb.fit2 <- xgb.train(data=xgbtrain, max.depth = 4, eta = 1, nthread = 2, nround
                      watchlist=watchlist, objective = "reg:squarederror")
 xgb.plot.tree(model = xgb.fit2, trees=0) # just from 0th root node
 ```
+
+# Supervised Analysis Conclusion
+
+When controlling for variables such as income, race, education and various illnesses, we have found a negative association between the number of grocery stores per square mile in a zip code area and percent of inhabitants who are obese. For every increase of one grocery store per square mile, obesity decreases by 0.0867%. We found some other interesting associations with obesity. As the percentage of inhabitants who are black increases, so does obesity. Obesity decreases with income and education. 
+
+Using xgboost to look at non-linear associations with obesity, we found that education (percent of inhabitants between 45 and 65 years of age with a bachelors or greater), mean income and being black are important variables in determining obesity. Number of grocery stores per square mile, to a lesser degree, is also important to explaining obesity.
+
 
 # Grocery Store Data
 Project Citation: 
