@@ -52,17 +52,15 @@ Theodore Gautier r0814273, Peter Day r0866276
 
 # 1. Research question
 
-Our research question reads as follows: Is number of grocery stores per square mile related to obesity when controlling for a number of other variables?
+Is number of grocery stores per square mile related to obesity when controlling for a number of other variables?
 
-<spoiler-alert>Yes</spoiler-alert>
-
-This is relevant because, it shows heterogeneous distribution of grocery stores can lead to a number of health problems and disproportionately effects the poor and less-educated.
+This is relevant because, it shows heterogeneous distribution of grocery stores can lead to a number of health problems and disproportionately effects poor, less-educated and black people.
 
 # 2. Design
 
 # 3. Analysis
 
-Step 1: We import our data. We used dataset XXX / We scraped data from XXX
+Step 1: Data sources:
 
 Grocery store data:
 [National Neighborhood Data Archive (NaNDA): Grocery Stores by ZIP Code Tabulation Area, United States, 2003-2017](https://www.openicpsr.org/openicpsr/project/123042/version/V1/view)

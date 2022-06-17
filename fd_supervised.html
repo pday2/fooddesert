@@ -196,16 +196,15 @@ pre code {
 </div>
 <div id="research-question" class="section level1">
 <h1>1. Research question</h1>
-<p>Our research question reads as follows: Is number of grocery stores per square mile related to obesity when controlling for a number of other variables?</p>
-<p><spoiler-alert>Yes</spoiler-alert></p>
-<p>This is relevant because, it shows heterogeneous distribution of grocery stores can lead to a number of health problems and disproportionately effects the poor and less-educated.</p>
+<p>Is number of grocery stores per square mile related to obesity when controlling for a number of other variables?</p>
+<p>This is relevant because, it shows heterogeneous distribution of grocery stores can lead to a number of health problems and disproportionately effects poor, less-educated and black people.</p>
 </div>
 <div id="design" class="section level1">
 <h1>2. Design</h1>
 </div>
 <div id="analysis" class="section level1">
 <h1>3. Analysis</h1>
-<p>Step 1: We import our data. We used dataset XXX / We scraped data from XXX</p>
+<p>Step 1: Data sources:</p>
 <p>Grocery store data: <a href="https://www.openicpsr.org/openicpsr/project/123042/version/V1/view">National Neighborhood Data Archive (NaNDA): Grocery Stores by ZIP Code Tabulation Area, United States, 2003-2017</a></p>
 <p>Demographic data: <a href="https://www.census.gov/programs-surveys/acs/">US Census: American Community Survey (ACS)</a></p>
 <p>Health data: <a href="https://chronicdata.cdc.gov/500-Cities-Places/PLACES-Local-Data-for-Better-Health-ZCTA-Data-2021/qnzd-25i4">US CDC: PLACES: Local Data for Better Health, ZCTA Data 2021 release</a></p>
@@ -696,16 +695,16 @@ xgb.fit &lt;- xgb.train(data=xgbtrain, max.depth = 4, eta = 1, nthread = 2, nrou
 <pre class="r"><code># linear boosting - not as good
 lin.fit &lt;- xgb.train(data=xgbtrain, booster = &quot;gblinear&quot;, nthread = 2, nrounds=10, 
                  watchlist=watchlist, objective = &quot;reg:squarederror&quot;)</code></pre>
-<pre><code>## [1]  train-rmse:7.340840 test-rmse:7.586282 
-## [2]  train-rmse:5.518034 test-rmse:5.599766 
-## [3]  train-rmse:4.813796 test-rmse:4.868779 
-## [4]  train-rmse:4.470177 test-rmse:4.510454 
-## [5]  train-rmse:4.288824 test-rmse:4.312803 
-## [6]  train-rmse:4.188060 test-rmse:4.203715 
-## [7]  train-rmse:4.120241 test-rmse:4.131230 
-## [8]  train-rmse:4.070279 test-rmse:4.081003 
-## [9]  train-rmse:4.026289 test-rmse:4.034962 
-## [10] train-rmse:3.989498 test-rmse:3.997760</code></pre>
+<pre><code>## [1]  train-rmse:7.340872 test-rmse:7.586308 
+## [2]  train-rmse:5.518052 test-rmse:5.599778 
+## [3]  train-rmse:4.813803 test-rmse:4.868790 
+## [4]  train-rmse:4.474976 test-rmse:4.511353 
+## [5]  train-rmse:4.298512 test-rmse:4.321730 
+## [6]  train-rmse:4.195293 test-rmse:4.210296 
+## [7]  train-rmse:4.126174 test-rmse:4.136471 
+## [8]  train-rmse:4.074143 test-rmse:4.082030 
+## [9]  train-rmse:4.031532 test-rmse:4.038450 
+## [10] train-rmse:3.994705 test-rmse:4.001542</code></pre>
 <pre class="r"><code>summary(xgb.fit)</code></pre>
 <pre><code>##                Length Class              Mode       
 ## handle             1  xgb.Booster.handle externalptr
