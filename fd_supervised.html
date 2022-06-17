@@ -208,6 +208,8 @@ pre code {
 <p>Grocery store data: <a href="https://www.openicpsr.org/openicpsr/project/123042/version/V1/view">National Neighborhood Data Archive (NaNDA): Grocery Stores by ZIP Code Tabulation Area, United States, 2003-2017</a></p>
 <p>Demographic data: <a href="https://www.census.gov/programs-surveys/acs/">US Census: American Community Survey (ACS)</a></p>
 <p>Health data: <a href="https://chronicdata.cdc.gov/500-Cities-Places/PLACES-Local-Data-for-Better-Health-ZCTA-Data-2021/qnzd-25i4">US CDC: PLACES: Local Data for Better Health, ZCTA Data 2021 release</a></p>
+<p>Our data come from the above three sources. All data are estimates for United States ZIP Code Tabulation Areas, which we used to join the various datasets. In the case of missing data we mostly removed the observations. With this much data we didn’t want to accidentally impute a value, say zip code, which makes no sense to impute. In addition we ended up with data for 28,000 ZCTAs, and thus were not lacking for data. The health data had estimates for 32 health conditions, which we narrowed down to five. The grocery store data had 32 variables which we narrowed down considerably, focusing on supermarkets/grocery stores and not on specialty food or warehouse club stores. Some renaming of variables was done to clarify variable meanings.</p>
+<p>The rest of the data come from the American Community Survey from the US Census. Some of these files had up to 700 variables, including estimates as well as margin of error fields, which we did not use. These files came with metadata files which aided greatly in narrowing down the number of variables. As we had race data for each ZCTA we decided not to include educational data broken down by race. The education data cleaning included many renames to make the variable names as concise and meaningful as possible. We used mean household income for each ZCTA. Race estimates were in seven catagories, including alaskan native, asian, black and white.</p>
 <pre class="r"><code>grocery &lt;- read.csv(&#39;./grocery/grocery.csv&#39;)
 health &lt;- read.csv(&#39;./health/health.csv&#39;)
 race &lt;- read.csv(&#39;./race/race.csv&#39;)
@@ -695,16 +697,16 @@ xgb.fit &lt;- xgb.train(data=xgbtrain, max.depth = 4, eta = 1, nthread = 2, nrou
 <pre class="r"><code># linear boosting - not as good
 lin.fit &lt;- xgb.train(data=xgbtrain, booster = &quot;gblinear&quot;, nthread = 2, nrounds=10, 
                  watchlist=watchlist, objective = &quot;reg:squarederror&quot;)</code></pre>
-<pre><code>## [1]  train-rmse:7.340872 test-rmse:7.586308 
-## [2]  train-rmse:5.518052 test-rmse:5.599778 
-## [3]  train-rmse:4.813803 test-rmse:4.868790 
-## [4]  train-rmse:4.474976 test-rmse:4.511353 
-## [5]  train-rmse:4.298512 test-rmse:4.321730 
-## [6]  train-rmse:4.195293 test-rmse:4.210296 
-## [7]  train-rmse:4.126174 test-rmse:4.136471 
-## [8]  train-rmse:4.074143 test-rmse:4.082030 
-## [9]  train-rmse:4.031532 test-rmse:4.038450 
-## [10] train-rmse:3.994705 test-rmse:4.001542</code></pre>
+<pre><code>## [1]  train-rmse:7.340900 test-rmse:7.586354 
+## [2]  train-rmse:5.518026 test-rmse:5.599737 
+## [3]  train-rmse:4.813785 test-rmse:4.868766 
+## [4]  train-rmse:4.474957 test-rmse:4.511336 
+## [5]  train-rmse:4.298551 test-rmse:4.321785 
+## [6]  train-rmse:4.195307 test-rmse:4.210311 
+## [7]  train-rmse:4.126184 test-rmse:4.136475 
+## [8]  train-rmse:4.074155 test-rmse:4.082038 
+## [9]  train-rmse:4.031364 test-rmse:4.040135 
+## [10] train-rmse:3.993084 test-rmse:4.000662</code></pre>
 <pre class="r"><code>summary(xgb.fit)</code></pre>
 <pre><code>##                Length Class              Mode       
 ## handle             1  xgb.Booster.handle externalptr

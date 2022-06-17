@@ -71,6 +71,9 @@ Demographic data:
 Health data:
 [US CDC: PLACES: Local Data for Better Health, ZCTA Data 2021 release ](https://chronicdata.cdc.gov/500-Cities-Places/PLACES-Local-Data-for-Better-Health-ZCTA-Data-2021/qnzd-25i4)
 
+Our data come from the above three sources. All data are estimates for United States ZIP Code Tabulation Areas, which we used to join the various datasets. In the case of missing data we mostly removed the observations. With this much data we didn't want to accidentally impute a value, say zip code, which makes no sense to impute. In addition we ended up with data for 28,000 ZCTAs, and thus were not lacking for data. The health data had estimates for 32 health conditions, which we narrowed down to five. The grocery store data had 32 variables which we narrowed down considerably, focusing on supermarkets/grocery stores and not on specialty food or warehouse club stores. Some renaming of variables was done to clarify variable meanings. 
+
+The  rest of the data come from the American Community Survey from the US Census. Some of these files had up to 700 variables, including estimates as well as margin of error fields, which we did not use. These files came with metadata files which aided greatly in narrowing down the number of variables. As we had race data for each ZCTA we decided not to include educational data broken down by race. The education data cleaning included many renames to make the variable names as concise and meaningful as possible. We used mean household income for each ZCTA. Race estimates were in seven catagories, including alaskan native, asian, black and white.
 
 
 ```{r loadData}
