@@ -1,0 +1,322 @@
+---
+title: "Big data Project"
+author: "Christian"
+date: "6/16/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(warning = FALSE, message = FALSE) 
+```
+
+
+# Food Deserts in The United States of America
+
+## Descriptive Statistics
+
+In the last report from The Department of Agriculture over 39.5 million Americans lived in Food Deserts in United States, with low access to healthy and affordable food, being income one of the most important variables to determine Food Deserts in America. (USDA, 2017) Having this in mind we will try to understand the relationship between different demographic and  economic variables that affect food deserts in the United States of America. 
+
+Before we dive into more detailed and complex machine learning algorithms we will run some basic descriptive statistics to understand how this variables are related to one another. We will also make dome plots to have a better idea of some variables distributions.
+
+``` {r, include=FALSE}
+
+# Call the packages needed for the descriptive Statistics
+
+library("tidyverse")
+library("stringr")
+library("dplyr")
+library("naniar")
+library("arsenal")
+library("ggplot2")
+theme_set(theme_bw(12))
+library(kableExtra)
+library(knitr)
+library(grid)
+
+
+# Call the data
+
+edu <- read.csv("~/KU LEUVEN/Classes/Big Data for Social Sciences/Second Part/Data/edu.csv")
+race <- read.csv("~/KU LEUVEN/Classes/Big Data for Social Sciences/Second Part/Data/race.csv")
+income <- read.csv("~/KU LEUVEN/Classes/Big Data for Social Sciences/Second Part/Data/income.csv")
+health <- read.csv("~/KU LEUVEN/Classes/Big Data for Social Sciences/Second Part/Data/health.csv")
+grocery <- read.csv("~/KU LEUVEN/Classes/Big Data for Social Sciences/Second Part/Data/grocery.csv")
+
+# merge the data
+
+total <- merge(x = edu, y = race, by = "zcta", all = TRUE)
+total <- merge(x = total, y = income, by = "zcta", all = TRUE)
+total <- merge(x = total, y = health , by = "zcta", all = TRUE)
+total <- merge(x = total, y = grocery, by = 'zcta', all = TRUE)
+
+data <- total %>% drop_na()
+na_count <- sum(is.na(data))
+
+data$other_race <- data$asian + data$pacific_islan + data$other + data$pacific_islan
+
+median_income <- median(data$mean_income)
+data$income <- median_income
+data %>%
+  mutate(income = ifelse(mean_income > income, "high", "low")) %>%
+  mutate(income = factor(income)) -> data
+
+data$obesity <- as.factor(ifelse(data$OBESITY<=15, '15',
+                             ifelse(data$OBESITY <=20, '20',
+                                    ifelse(data$OBESITY <= 25, '25',
+                                           ifelse(data$OBESITY <= 30, '30',
+                                                  ifelse(data$OBESITY <= 35, '35',
+                                                         ifelse(data$OBESITY <= 40, '40',
+                                                                ifelse(data$OBESITY <= 45, '45',
+                                                                       ifelse(data$OBESITY <= 50, '50',
+                                                                              ifelse(data$OBESITY <= 55, '55', '60'))))))))))
+                                
+
+data$depression <- as.factor(ifelse(data$DEPRESSION<=10, '10',
+                                 ifelse(data$DEPRESSION <=12.5, '12.5',
+                                        ifelse(data$DEPRESSION <= 15, '15',
+                                               ifelse(data$DEPRESSION <= 17.5, '17.5',
+                                                      ifelse(data$DEPRESSION <= 20, '20',
+                                                             ifelse(data$DEPRESSION <= 22.5, '22.5',
+                                                                      ifelse(data$DEPRESSION <= 25.5, '25.5',
+                                                                                  ifelse(data$DEPRESSION <= 27, '27.5',
+                                                                                         ifelse(data$DEPRESSION <= 30, '30', 
+                                                                                                ifelse(data$DEPRESSION <= 32.5, '32.5',
+                                                                                                       ifelse(data$DEPRESSION <= 35, '35','36'))))))))))))
+
+
+
+data$black_prop <- data$black/data$tot_pop
+
+min(data$black_prop)
+max(data$black_prop)
+
+# We create a variable for majority
+
+data$majority <- data$black_prop
+data %>% mutate(majority = ifelse(black_prop > 0.5, "black_neigh", "non_black_neigh")) %>%
+  mutate(majority = factor(majority)) -> data
+
+```
+
+First we start by plotting the total Population distribution of all zip codes available in our data set, followed by the population distribution for white people, black people, mixed race, and all other racial minorities will be classified as other for the histogram. 
+
+```{r, echo=FALSE}
+
+par(mfrow = c(1,1))
+hist_pop <- hist(data$tot_pop, col='seagreen', xlim=c(0,max(data$tot_pop)), main = " Total Population Distribution")
+
+
+par(mfrow = c(1,4))
+hist(data$white, col='yellow', xlim=c(0,max(data$white)), main = "White Population Distribution")
+hist(data$black, col='turquoise', xlim=c(0,max(data$black)), main = "Black Population Distribution")
+hist(data$mixed_race, col='red', xlim=c(0,max(data$mixed_race)), main = "Mixed Population Distribution")
+hist(data$other_race, col='blue', xlim=c(0,max(data$other_race)), main = "Other Races Population Distribution")
+```
+
+From what we can see from the plots above it is clear that for most of our data set, the majority of zip codes, are zones populated by under 5000 people, meaning that having some extreme observations to the right side of the distribution will drag the mean to the right (mean > median) this will translate in a distribution that is positive skewed. This right skewed distribution will be transposed to all sub populations. 
+
+Next, we will plot the distribution of our health variables being of great importance to understand food deserts in the US. The health variables we are most interested are Obesity, Depression, Cancer, and Cholesterol. 
+
+```{r, echo=FALSE}
+par(mfrow = c(2,2))
+hist(data$OBESITY, col='blue1', breaks=20, main = " Distribution of Obesity")
+hist(data$DEPRESSION, col='cyan4',breaks=20, main =  "Distribution of Depression")
+hist(data$CANCER, col='darkgoldenrod2', main = "Distribution of Cancer")
+hist(data$CHOLSCREEN, col='blue4', main = "Distribution of Cholscreen")
+```
+
+From the plots we can see that Obesity and Depression follow what seems to be almost a normal distribution. While Cancer and Cholesterol seem to have some extreme values that cause the distribution to be a little skewed to the right for cancer and to the left for cholesterol.
+
+To complement the graphs we did above, we will also run some descriptive statistics that will be shown next:
+
+```{r, echo=FALSE}
+# The descriptive table format and code was based on Structural Equation class with Alberto Stefanelli
+
+health_variables <- data %>% select(OBESITY, DEPRESSION, CANCER, CHOLSCREEN )
+
+health_var <- as.data.frame(psych::describe(health_variables))
+
+desc_table_health <- dplyr::select(health_var, 
+                                 mean,
+                                 sd,
+                                 median,
+                                 min,
+                                 max,
+                                 skew,
+                                 kurtosis)
+
+kable_styling(kable(desc_table_health,title = "Descriptive Statistics for Health Variables"), position = "center")
+
+```
+
+
+Based on the results from the USDA we know that income is an important variable to understand food deserts in the USA, for this reason we will repeat the same process but now we will graph the distributions based on income (Low, High) where our barrier to classify between low income and high income for this graphs will be the median of the mean income in each zip code.
+
+```{r}
+
+ggplot(data, aes(x=obesity, fill = as.factor(income)))+
+  geom_histogram( color='#e9ecef', alpha=0.6, position='identity', stat = "count")+
+  geom_vline(aes(xintercept=mean(OBESITY)), color="blue", linetype="dashed", size=1) 
+
+ggplot(data, aes(x=depression, fill = as.factor(income)))+
+  geom_histogram( color='#e9ecef', alpha=0.6, position='identity', stat = "count", binwidth = 1)+
+  geom_vline(aes(xintercept=mean(depression)), color="blue", linetype="dashed", size=1) 
+
+```
+
+```{r, include=FALSE}
+ggplot(data, aes(x=CANCER, fill = as.factor(income)))+
+  geom_histogram( color='#e9ecef', alpha=0.6, position='identity', stat = "count", binwidth = 1)+
+  geom_vline(aes(xintercept=mean(CANCER)), color="blue", linetype="dashed", size=1) 
+
+ggplot(data, aes(x=CHOLSCREEN, fill = as.factor(income)))+
+  geom_histogram( color='#e9ecef', alpha=0.6, position='identity', stat = "count", binwidth = 1)+
+  geom_vline(aes(xintercept=mean(CHOLSCREEN)), color="blue", linetype="dashed", size=1) 
+```
+
+As we can see from the output above, there seems to be a difference in the distributions of obesity by zip code based on income (HIGH, LOW). The same pattern seems to affect depression. We ran also the same code for  cancer and cholesterol, but there seems not to be a difference for this two variables but more test for this seems to be adequate.
+
+Now again having in mind that income is an important variable for food deserts and health problems like obesity we will plot the number of zip codes that have a an specific number of grocery stores. 
+
+```{r}
+par(mfrow = c(1,1))
+ggplot(data, aes(x=grocery_count, fill = as.factor(income)))+
+  geom_histogram( color='#e9ecef', alpha=0.6, position='identity', stat = "count", binwidth = 0.5)+
+  xlim(0, 35) + ylim(0, 3500)
+
+```
+
+From what we can see from the plot above it sees to be a relationship between income and number of grocery stores.
+
+To test this we will create a table between income and Grocery count. We will also include a table for the relationship between income and grocery per square mile. 
+
+```{r}
+
+table_one <- tableby(income ~ grocery_count, data = data) 
+kable_styling(kable(summary(table_one, title = "Grocery Count by Income")), position = "center") 
+
+table_two <- tableby(income ~ grocery_persqmile, data = data) 
+kable_styling(kable(summary(table_two, title = "Number of Groceries by Income")), position = "center") 
+
+
+```
+
+```{r, include=FALSE}
+# Fro the tables we got the code format from the next webpage:
+
+# Schmidt, p. (2018). How to Easily Create Descriptive Summary Statistics Tables in R Studio – By Group. That Data Tho. URL: https://thatdatatho.com/easily-create-descriptive-summary-statistic-tables-r-studio/
+```
+
+We will also replicate the same methodology for grocery per square mile and obesity taking into account if the zip code is populated with over 50% of black population.   
+
+``` {r}
+ggplot(data, aes(x=obesity, fill = as.factor(majority)))+
+  geom_histogram( color='#e9ecef', alpha=0.6, position='identity', stat = "count")
+
+ggplot(data, aes(x=depression, fill = as.factor(majority)))+
+  geom_histogram( color='#e9ecef', alpha=0.6, position='identity', stat = "count")
+
+table_obe <- tableby(majority ~ OBESITY, data = data) 
+kable_styling(kable(summary(table_obe, title = "Obesity by Mostly Black Populated Zip Codes")), position = "center")
+
+table_dep <- tableby(majority ~ DEPRESSION, data = data) 
+kable_styling(kable(summary(table_dep, title = "Depression by Mostly Black Populated Zip Codes")), position = "center")
+
+```
+
+
+As we can see from these tables presented before there seems to be a difference in the number of grocery stores per sqr mile and number of stores per zip code based on income. To complement this we will show some descriptive statistics for all grocery store variables: Grocery_count, Grocry_persqmile, and Grocery_per1k.
+
+```{r pressure, echo=FALSE}
+descriptive <- data %>% select(grocery_count, grocery_persqmile, grocery_per1k )
+
+descrip <- as.data.frame(psych::describe(descriptive))
+
+desc_table <- dplyr::select(descrip, 
+                                 mean,
+                                 sd,
+                                 median,
+                                 min,
+                                 max,
+                                 skew,
+                                 kurtosis)
+
+
+kable_styling(kable(round(desc_table, 2), title = "Descriptive Statistics for Grocery Variables"), position = "center")
+
+```
+
+Now we will try to check the distribution of all our educational variables. To get a better grasp on how they are distributed we will again do this taking into account income. 
+
+```{r, include=FALSE}
+# For the boxplots we follow the code from this webpage: ggplot2 box plot : Quick start guide - R software and # data visualization. from this URL: http://www.sthda.com/english/wiki/ggplot2-box-plot-quick-start-guide-r-software-and-data-visualization
+  
+```
+
+```{r, echo=FALSE}
+library(reshape2)
+library(reshape)
+library(grid)
+
+educ1 <- data[,2:6]
+educ2 <- data[,7:11]
+educ3 <- data[,12:16]
+educ4 <- data[, 17:22]
+
+educ1$income <- data$income
+educ2$income <- data$income
+educ3$income <- data$income
+educ4$income <- data$income
+
+educ_first <- reshape2::melt(educ1, id = 'income')                    
+educ_second <- reshape2::melt(educ2, id = 'income')
+educ_third <- reshape2::melt(educ2, id = 'income')
+educ_fourth <- reshape2::melt(educ4, id = 'income')
+
+
+plot1 <- ggplot(educ_first, aes(x = variable, y = value, color = income)) +  # ggplot function
+  geom_boxplot(outlier.shape = NA)
+plot2 <- ggplot(educ_second, aes(x = variable, y = value, color = income)) +  # ggplot function
+  geom_boxplot(outlier.shape = NA)
+plot3 <- ggplot(educ_third, aes(x = variable, y = value, color = income)) +  # ggplot function
+  geom_boxplot(outlier.shape = NA)
+plot4 <- ggplot(educ_fourth, aes(x = variable, y = value, color = income)) +  # ggplot function
+  geom_boxplot(outlier.shape = NA)
+
+grid.newpage()
+pushViewport(viewport(layout=grid.layout(4,1)))
+vplayout <- function(x,y){
+  viewport(layout.pos.row=x, layout.pos.col=y)}
+print(plot1, vp=vplayout(1,1))
+print(plot2, vp=vplayout(2,1))
+print(plot3, vp=vplayout(3,1))
+print(plot3, vp=vplayout(4,1))
+
+```
+
+
+Next we will create a correlogram between our health variables, our grocery variables, porcentage of black population for each zip code, and the mean income of the zip code.
+
+
+```{r}
+
+integrals <- data %>% dplyr::select( OBESITY, DEPRESSION, CANCER, CHOLSCREEN, CHD, mean_income, grocery_count, grocery_per1k, grocery_persqmile, black_prop)
+
+
+# we make a correlation matrix
+par(mfrow = c(1,1))
+covariation <- cov(integrals)
+
+correlation <- cov2cor(covariation)
+
+corrplot::corrplot(correlation, 
+                   is.corr = FALSE,        
+                   method = "color",
+                   type = "upper",
+                   addCoef.col = "black")
+
+```
+
+From the output we can see there seems to be a relationship between CHD and the other health variables. Obesity seems to be positively correlated with Depression. There is some negative correlation between income and some of the health diseases variables, like obesity and depression, while some positive correlation with high cholesterol. There seems to be correlation between store count and store per square mile with income. 
+
+Interesting there are positive correlations between number of grocery stores per square miles and grocery count with zip codes with higher percentages of black population, While there seems to also be a positive correlation with obesity. This could give as a clue that there might be a relationship between the quality of the food available in zip codes with a higher black population. Clearly further test have to be made for this. 
