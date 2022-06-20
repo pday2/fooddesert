@@ -1,0 +1,1557 @@
+---
+---
+# **Assignment 2: Food Deserts in the United States**
+
+### Group 42
+Group Members: Christian Marcelo Chafla Bastidas r0874332, Anja Derić r0873512,
+Theodore Gautier r0814273, Peter Day r0866276 
+Submission Date: 20/6/2022
+
+# Table of Contents
+
+1. Research Question
+
+2. Research Design
+
+3. Analysis & Results
+  + Data Description & Pre-Processing
+  + Descriptive Analytics
+  + Unsupervised Learning
+  + Supervised Learning
+  + API Data & Sentiment Analysis
+
+4. Conclusions
+
+5. Pitch
+
+6. References
+
+# 1. Research Question
+
+This project focuses on the issue of food deserts and lack of access to grocery stores in the United States of America. To that end, the research questions this project aims to answer are as follows:
+
+_Is there a relationship between demographic variables, availability of grocery stores, and prevalence of health-related issues in the US?_
+
+_Is number of grocery stores per square mile related to obesity when controlling for a number of other variables?_
+
+_Do grocery store and fast food restaurant reviews and ratings vary between areas in the US which are considered food deserts and those which are not?_
+
+These research questions are relevant because they can show how heterogeneous distribution of grocery stores can lead to a number of health problems and disproportionately effects poor, less-educated, and black people.
+
+# 2. Research Design
+
+As indicated by the research questions outlined above, our design consisted of two different approaches/segments of data. The first part of our research focuses on using demographic, economic, and similar administrative data to explore what factors impact the development and existence of food deserts, as well as how living in food desert areas can impact individual health. 
+
+The second segment of our research focuses more on attitudes of individuals living within food desert and non-desert areas, specifically looking at Yelp review data and comparing reviews between the two areas for grocery stores as well as fast food restaurants. 
+
+This design setup allows us to get a broad and diverse overview of the impact of food deserts in the United States. The next section of this report will cover our data collection process, descriptive statistics, unsupervised and supervised learning, as well as API data anlysis and sentiment analysis. 
+
+# 3. Analysis + Results
+
+_Note: Some segments of code are suppressed from the output so as to make the report more clear and concise. All code segments are included in the final .Rmd file, but not necessarily this rendered report. _
+
+## 3.1 Data Description & Pre-Processing
+
+### 3.1.1 Demographic and General Data
+
+The data used for descriptive analytics, unsupervised, and supervised learning comes from the following sources:
+
+**Grocery Store Data**
+[National Neighborhood Data Archive (NaNDA): Grocery Stores by ZIP Code Tabulation Area, United States, 2003-2017](https://www.openicpsr.org/openicpsr/project/123042/version/V1/view)
+
+**Demographic Data**
+[US Census: American Community Survey (ACS)](https://www.census.gov/programs-surveys/acs/)
+
+**Health Data**
+[US CDC: PLACES: Local Data for Better Health, ZCTA Data 2021 release ](https://chronicdata.cdc.gov/500-Cities-Places/PLACES-Local-Data-for-Better-Health-ZCTA-Data-2021/qnzd-25i4)
+
+All data are estimates for United States ZIP Code Tabulation Areas, which we used to join the various datasets. In the case of missing data we mostly removed the observations. With this much data we didn't want to accidentally impute a value, say zip code, which makes no sense to impute. In addition, we ended up with data for 28,000 ZCTAs, and thus were not lacking for data. 
+
+The health data had estimates for 32 health conditions, which we narrowed down to five. The grocery store data had 32 variables which we narrowed down considerably, focusing on supermarkets/grocery stores and not on specialty food or warehouse club stores. Some renaming of variables was done to clarify variable meanings. 
+
+The  rest of the data come from the American Community Survey from the US Census. Some of these files had up to 700 variables, including estimates as well as margin of error fields, which we did not use. These files came with metadata files which aided greatly in narrowing down the number of variables. As we had race data for each ZCTA we decided not to include educational data broken down by race. The education data cleaning included many renames to make the variable names as concise and meaningful as possible. We used mean household income for each ZCTA. Race estimates were in seven categories, including Alaskan Native, Asian, Black and White.
+
+### 3.1.2 API Rating + Review Data
+
+The data used for the analysis of reviews and ratings of grocery stores and fast food restaurants was gathered using the Yelp API, which allows for 5,000 free daily requests. The specific endpoints and requests used to gather the data are specified in Section 3.5 API Data + NLP.
+
+### 3.1.3 Ethical Considerations
+
+All data used in Sections 3.2 through 3.4 of the report was downloaded directly from publicly accessible websites (in most cases, from the United States government). No web scraping was performed, all data collected was in the form of Excel of CSV files. The data itself was reported on a zip code level, so consideration regarding individuals' informed consent and privacy were not necessary. Furthermore,  there are many academic studies that have previously explored food deserts and factors that impact or are related to their locations. The results and analysis from these studies is generally available to the public. 
+
+For section 3.5, we used Yelp API data. Reviews and rating were collected on a business level. Businesses were tracked using a business_id. While the business ID can be used to track down specific locations of stores, this information is publicly accessible on Yelp, both through the developer portal (which is free to the public), as well as the actual Yelp website (also free to the public). We additionally collected reviews from individual users for the businesses of interest. No user information was collected in this process, only the text of the review and the corresponding rating. Just as with businesses, individual review information is publicly available and can be searched up on Yelp for free. As a result, there were no special considerations with respect to ethics in our project.
+
+### 3.1.4 Pre-Processing
+
+Data cleaning steps for the non-API data are briefly discussed in 3.1.1 Demographic and General Data. Due to the sheer size of the original data files and the lengthy process cleaning these files, we have excluded the portion of the code used for cleaning from this final report. However, all the data cleaning R files can be found in their respective folders on our publicly accessible GitHub page [linked HERE](https://github.com/pday2/fooddesert). The remaining pre-processing steps are done at the beginning of each section as different steps needed to be taken for different types of analyses. API data pre-processing is shown in Section 3.5 API Data & Sentiment Analysis.
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(httr)
+library(jsonlite)
+library(dplyr)
+library(ggplot2)
+library(plyr)
+library(gridExtra)
+library(tidyverse)
+library(MASS) # stepAIC
+library(caret)
+library(cluster)
+library(randomForest)
+library(factoextra)
+library(lmtest) # Breush-Pagan
+library(skedastic) # White test for heteroskedasticity
+library(car) # boxCox, Box-Tidwell
+library(xgboost)
+library(lemon)
+library(DiagrammeR)
+library(stringr)
+library(naniar)
+library(arsenal)
+theme_set(theme_bw(12))
+library(kableExtra)
+library(knitr)
+library(grid)
+library(tm)
+library(SnowballC)
+library(textcat)
+library(caTools)
+library(rpart)
+library(rpart.plot)
+library(e1071)
+library(wordcloud)
+library(tidytext)
+library(textdata)
+library(data.table)
+knit_print.data.framd <- lemon_print
+knit_print.tbl <- lemon_print
+
+setwd("~/R/big_data")
+```
+
+```{r loadData}
+grocery <- read.csv('grocery.csv')
+health <- read.csv('health.csv')
+race <- read.csv('race.csv')
+income <- read.csv('income_cleaned.csv')
+edu <- read.csv('education.csv')
+```
+
+## 3.2 Descriptive Analytics
+
+From the 2017 Department of Agriculture report, thousands of Americans live in food deserts in the United States, with low access to healthy and affordable food and low income being one of the most important variables in determining where these areas are in the US (USDA, 2017).  Having this in mind, we will try to understand the relationship between different demographic and economic variables that affect food deserts in the US. 
+
+Before we dive into more detailed and complex machine learning algorithms, we will first run some basic descriptive statistics to understand how these variables are related to one another. We will also make dome plots to have a better idea of some variables' distributions.
+
+``` {r, include=FALSE}
+
+# merging the data
+total <- merge(x = edu, y = race, by = "zcta", all = TRUE)
+total <- merge(x = total, y = income, by = "zcta", all = TRUE)
+total <- merge(x = total, y = health , by = "zcta", all = TRUE)
+total <- merge(x = total, y = grocery, by = 'zcta', all = TRUE)
+
+# drop rows with missing data
+data <- total %>% drop_na()
+na_count <- sum(is.na(data))
+
+# combine race counts
+data$other_race <- data$asian + data$pacific_islan + data$other + data$pacific_islan
+
+# median income variable creation
+median_income <- median(data$mean_income)
+data$income <- median_income
+data %>%
+  mutate(income = ifelse(mean_income > income, "high", "low")) %>%
+  mutate(income = factor(income)) -> data
+
+# obsesity format change
+data$obesity <- as.factor(ifelse(data$OBESITY<=15, '15',
+                                 ifelse(data$OBESITY <=20, '20',
+                                 ifelse(data$OBESITY <= 25, '25',
+                                 ifelse(data$OBESITY <= 30, '30',
+                                 ifelse(data$OBESITY <= 35, '35',
+                                 ifelse(data$OBESITY <= 40, '40',
+                                 ifelse(data$OBESITY <= 45, '45',
+                                 ifelse(data$OBESITY <= 50, '50',
+                                 ifelse(data$OBESITY <= 55, '55', '60'))))))))))
+                                
+# depression format change
+data$depression <- as.factor(ifelse(data$DEPRESSION<=10, '10',
+                                 ifelse(data$DEPRESSION <=12.5, '12.5',
+                                 ifelse(data$DEPRESSION <= 15, '15',
+                                 ifelse(data$DEPRESSION <= 17.5, '17.5',
+                                 ifelse(data$DEPRESSION <= 20, '20',
+                                 ifelse(data$DEPRESSION <= 22.5, '22.5',
+                                 ifelse(data$DEPRESSION <= 25.5, '25.5',
+                                 ifelse(data$DEPRESSION <= 27, '27.5',
+                                 ifelse(data$DEPRESSION <= 30, '30', 
+                                 ifelse(data$DEPRESSION <= 32.5, '32.5',
+                                 ifelse(data$DEPRESSION <= 35, '35','36'))))))))))))
+
+
+# calculaiting black proportion
+data$black_prop <- data$black/data$tot_pop
+min(data$black_prop)
+max(data$black_prop)
+
+# We create a variable for majority
+
+data$majority <- data$black_prop
+data %>% mutate(majority = ifelse(black_prop > 0.5, "black_neigh", "non_black_neigh"))   %>% mutate(majority = factor(majority)) -> data
+
+```
+
+First we start by plotting the total population distribution of all zip codes available in our data set, followed by the population distribution for white people, black people, mixed race, and all other racial minorities will be classified as other for the histogram. 
+
+```{r, echo=FALSE}
+
+par(mfrow = c(1,1))
+hist_pop <- hist(data$tot_pop, col='seagreen', xlim=c(0,max(data$tot_pop)), main = " Total Population Distribution")
+
+
+par(mfrow = c(1,4))
+hist(data$white, col='yellow', xlim=c(0,max(data$white)), main = "White Population Distribution")
+hist(data$black, col='turquoise', xlim=c(0,max(data$black)), main = "Black Population Distribution")
+hist(data$mixed_race, col='red', xlim=c(0,max(data$mixed_race)), main = "Mixed Population Distribution")
+hist(data$other_race, col='blue', xlim=c(0,max(data$other_race)), main = "Other Races Population Distribution")
+```
+
+From what we can see from the plots above it is clear that for most of our data set, the majority of zip codes are zones populated by under 5000 people, meaning that having some extreme observations to the right side of the distribution will drag the mean to the right (mean > median). This will translate in a distribution that is positively skewed. This right-skewed distribution will be transposed to all sub-populations. 
+
+Next, we will plot the distribution of our health variables being of great importance to understand food deserts in the US. The health variables we are most interested are Obesity, Depression, Cancer, and Cholesterol. 
+
+```{r, echo=FALSE}
+par(mfrow = c(2,2))
+hist(data$OBESITY, col='blue1', breaks=20, main = " Distribution of Obesity")
+hist(data$DEPRESSION, col='cyan4',breaks=20, main =  "Distribution of Depression")
+hist(data$CANCER, col='darkgoldenrod2', main = "Distribution of Cancer")
+hist(data$CHOLSCREEN, col='blue4', main = "Distribution of Cholscreen")
+```
+
+From the plots we can see that Obesity and Depression follow what seems to be almost a normal distribution, while Cancer and Cholesterol seem to have some extreme values that cause the distribution to be a little skewed to the right for Cancer and to the left for Cholesterol.
+
+To complement the graphs we did above, we will also run some descriptive statistics that will be shown next.
+
+```{r, echo=FALSE}
+# The descriptive table format and code was based on Structural Equation class with #Alberto Stefanelli
+
+health_variables <- data %>% dplyr::select(OBESITY, DEPRESSION, CANCER, CHOLSCREEN )
+
+health_var <- as.data.frame(psych::describe(health_variables))
+
+desc_table_health <- dplyr::select(health_var, 
+                                   mean,
+                                   sd,
+                                   median,
+                                   min,
+                                   max,
+                                   skew,
+                                   kurtosis)
+
+kable_styling(kable(desc_table_health,title = "Descriptive Statistics for Health Variables"), position = "center")
+
+```
+
+Based on the results from the USDA we know that income is an important variable to understand food deserts in the USA. For this reason we will repeat the same process but now we will graph the distributions based on income (Low, High) where our barrier to classify between low income and high income for this graphs will be the median of the mean income in each zip code.
+
+```{r}
+
+ggplot(data, aes(x=obesity, fill = as.factor(income)))+
+  geom_histogram( color='#e9ecef', alpha=0.6, position='identity', stat = "count")+
+  geom_vline(aes(xintercept=mean(OBESITY)), color="blue", linetype="dashed", size=1) 
+
+ggplot(data, aes(x=depression, fill = as.factor(income)))+
+  geom_histogram( color='#e9ecef', alpha=0.6, position='identity', stat = "count", binwidth = 1)+
+  geom_vline(aes(xintercept=mean(depression)), color="blue", linetype="dashed", size=1) 
+
+```
+
+```{r, include=FALSE}
+ggplot(data, aes(x=CANCER, fill = as.factor(income)))+
+  geom_histogram( color='#e9ecef', alpha=0.6, position='identity', stat = "count", binwidth = 1)+
+  geom_vline(aes(xintercept=mean(CANCER)), color="blue", linetype="dashed", size=1) 
+
+ggplot(data, aes(x=CHOLSCREEN, fill = as.factor(income)))+
+  geom_histogram( color='#e9ecef', alpha=0.6, position='identity', stat = "count", binwidth = 1)+
+  geom_vline(aes(xintercept=mean(CHOLSCREEN)), color="blue", linetype="dashed", size=1) 
+```
+
+As we can see from the output above, there seems to be a difference in the distributions of obesity by zip code based on income (HIGH, LOW). The same pattern seems to affect depression. We ran also the same code for  cancer and cholesterol, but there seems not to be a difference for this two variables but more testing for this seems to be adequate.
+
+Now again having in mind that income is an important variable for food deserts and health problems like obesity, we will plot the number of zip codes that have a specific number of grocery stores. 
+
+```{r}
+par(mfrow = c(1,1))
+ggplot(data, aes(x=grocery_count, fill = as.factor(income)))+
+  geom_histogram( color='#e9ecef', alpha=0.6, position='identity', stat = "count", binwidth = 0.5)+
+  xlim(0, 35) + ylim(0, 3500)
+
+```
+
+From what we can see from the plot above, there seems to be a relationship between income and number of grocery stores.
+
+To test this we will create a table between income and grocery count. We will also include a table for the relationship between income and grocery per square mile. 
+
+```{r}
+
+table_one <- tableby(income ~ grocery_count, data = data) 
+kable_styling(kable(summary(table_one, title = "Grocery Count by Income")), position = "center") 
+
+table_two <- tableby(income ~ grocery_persqmile, data = data) 
+kable_styling(kable(summary(table_two, title = "Number of Groceries by Income")), position = "center") 
+
+```
+
+```{r, include=FALSE}
+# Fro the tables we got the code format from the next webpage:
+
+# Schmidt, p. (2018). How to Easily Create Descriptive Summary Statistics Tables in R Studio – By Group. That Data Tho. URL: https://thatdatatho.com/easily-create-descriptive-summary-statistic-tables-r-studio/
+```
+
+We will also replicate the same methodology for grocery per square mile and obesity, taking into account if the zip code is populated with over 50% of black population.   
+
+``` {r}
+ggplot(data, aes(x=obesity, fill = as.factor(majority)))+
+  geom_histogram( color='#e9ecef', alpha=0.6, position='identity', stat = "count")
+
+ggplot(data, aes(x=depression, fill = as.factor(majority)))+
+  geom_histogram( color='#e9ecef', alpha=0.6, position='identity', stat = "count")
+
+table_obe <- tableby(majority ~ OBESITY, data = data) 
+kable_styling(kable(summary(table_obe, title = "Obesity by Mostly Black Populated Zip Codes")), position = "center")
+
+table_dep <- tableby(majority ~ DEPRESSION, data = data) 
+kable_styling(kable(summary(table_dep, title = "Depression by Mostly Black Populated Zip Codes")), position = "center")
+
+```
+
+As we can see from the tables presented before, there seems to be a difference in the number of grocery stores per sqr mile and number of stores per zip code based on income. To complement this we will show some descriptive statistics for all grocery store variables: Grocery_count, Grocry_persqmile, and Grocery_per1k.
+
+```{r pressure, echo=FALSE}
+descriptive <- data %>% dplyr::select(grocery_count, grocery_persqmile, grocery_per1k )
+
+descrip <- as.data.frame(psych::describe(descriptive))
+
+desc_table <- dplyr::select(descrip, 
+                                 mean,
+                                 sd,
+                                 median,
+                                 min,
+                                 max,
+                                 skew,
+                                 kurtosis)
+
+
+kable_styling(kable(round(desc_table, 2), title = "Descriptive Statistics for Grocery Variables"), position = "center")
+
+```
+
+Now, we will try to check the distribution of all our educational variables. To get a better grasp on how they are distributed we will again do this taking into account income. 
+
+```{r, include=FALSE}
+# For the boxplots we follow the code from this webpage: ggplot2 box plot : Quick start guide - R software and # data visualization. from this URL: http://www.sthda.com/english/wiki/ggplot2-box-plot-quick-start-guide-r-software-and-data-visualization
+  
+```
+
+```{r, echo=FALSE}
+
+educ1 <- data[,2:6]
+educ2 <- data[,7:11]
+educ3 <- data[,12:16]
+educ4 <- data[, 17:22]
+
+educ1$income <- data$income
+educ2$income <- data$income
+educ3$income <- data$income
+educ4$income <- data$income
+
+educ_first <- reshape2::melt(educ1, id = 'income')                    
+educ_second <- reshape2::melt(educ2, id = 'income')
+educ_third <- reshape2::melt(educ2, id = 'income')
+educ_fourth <- reshape2::melt(educ4, id = 'income')
+
+
+plot1 <- ggplot(educ_first, aes(x = variable, y = value, color = income)) +  # ggplot function
+  geom_boxplot(outlier.shape = NA)
+plot2 <- ggplot(educ_second, aes(x = variable, y = value, color = income)) +  # ggplot function
+  geom_boxplot(outlier.shape = NA)
+plot3 <- ggplot(educ_third, aes(x = variable, y = value, color = income)) +  # ggplot function
+  geom_boxplot(outlier.shape = NA)
+plot4 <- ggplot(educ_fourth, aes(x = variable, y = value, color = income)) +  # ggplot function
+  geom_boxplot(outlier.shape = NA)
+
+grid.newpage()
+pushViewport(viewport(layout=grid.layout(4,1)))
+vplayout <- function(x,y){
+  viewport(layout.pos.row=x, layout.pos.col=y)}
+print(plot1, vp=vplayout(1,1))
+print(plot2, vp=vplayout(2,1))
+print(plot3, vp=vplayout(3,1))
+print(plot3, vp=vplayout(4,1))
+
+```
+
+
+Next, we will create a correlogram between our health variables, our grocery variables, porcentage of black population for each zip code, and the mean income of the zip code.
+
+
+```{r}
+
+integrals <- data %>% dplyr::select( OBESITY, DEPRESSION, CANCER, CHOLSCREEN, CHD, mean_income, grocery_count, grocery_per1k, grocery_persqmile, black_prop)
+
+
+# we make a correlation matrix
+par(mfrow = c(1,1))
+covariation <- cov(integrals)
+
+correlation <- cov2cor(covariation)
+
+corrplot::corrplot(correlation, 
+                   is.corr = FALSE,        
+                   method = "color",
+                   type = "upper",
+                   addCoef.col = "black")
+
+```
+
+From the output we can see there seems to be a relationship between CHD and the other health variables. Obesity seems to be positively correlated with Depression. There is some negative correlation between income and some of the health diseases variables, like obesity and depression, while some positive correlation with high cholesterol. There seems to be correlation between store count and store per square mile with income. 
+
+Interestingly there are positive correlations between number of grocery stores per square miles and grocery count with zip codes with higher percentages of black population. There seems to also be a positive correlation with obesity. This could give a clue that there might be a relationship between the quality of the food available in zip codes with a higher black population. Clearly further tests have to be made for this. 
+
+## 3.3 Unsupervised Learning
+
+```{r echo = FALSE}
+edu <- read.csv(file = 'education.csv')
+groc <- read.csv(file = 'grocery.csv')
+health <- read.csv(file = 'health.csv')
+inc <- read.csv(file = 'income_cleaned.csv')
+race <- read.csv(file = 'race.csv')
+
+#Add zipcode information to search for state or county
+zip_county <- read.csv(file = 'zip_county.csv')
+
+#New data frame containing zcta, state and county information
+zip_county <-zip_county[c(1,7,8)]
+names(zip_county)[names(zip_county) == "zip"] <- "zcta"
+zip_county$zcta <-as.numeric((zip_county$zcta))
+
+```
+
+Creation of additional variables for subsequent analysis:
+
+```{r}
+#creation of a new percentage of white variable and data frame 
+#containing percent and pop
+race["per_white"] <- race[3]/race[2]
+racew <- race[c(1,2,10)]
+
+#creation of new variable looking at the percentage of people over the age of 25 who did not obtain a High School diploma
+education <- edu[c(1,6,7)]
+education['gt25_lt_hs'] <- education[2]+education[3]
+educa <- education[c(1,4)]
+
+```
+
+Putting all the data together in one data frame:
+
+```{r}
+#putting all tables together
+df_list <- list(educa,groc,health,inc,racew,zip_county)
+test <- df_list %>% reduce(inner_join , by="zcta")
+head(test)
+
+
+```
+
+```{r ,include=FALSE}
+#checking for na's and imputing them 
+sum(is.na(test))
+which(is.na(test), arr.ind=TRUE)
+test$grocery_per1k[is.na(test$grocery_per1k)] <- median(test$grocery_per1k, na.rm = T) 
+sum(is.na(test))
+```
+
+Making a new data frame with only the relevant information and removing duplicate variable rows:
+
+```{r}
+#retaining only important info
+dat <- test[-c(1,3,4,6,7,9:11)]
+
+#creationg of a new variable for pop density
+dat["density pop/sqMile"] <- dat[10]/dat[2]
+
+#remove area  
+dat <- dat[-2]
+```
+
+### 3.3.1 Analysis by State
+
+The first step in our analysis will be to to aggregate the mean variables for each state. We lose a lot of information from the individual observations but this helps us have a general look at the states and see whether we can find interesting clusters or patterns.
+
+```{r warning = FALSE }
+# Removing county name and summing the mean for each state with the weight being the total population of each data point
+dat_state <- dat[-12]
+
+#aggregating the values with population as weights
+dat_table <- data.table(dat_state)
+mean_state <- data.frame(dat_table[, lapply(.SD, weighted.mean, w=.SD$tot_pop), by=state])
+
+#removing the population variable
+mean_state <- mean_state[,-10]
+
+#Changing the row name to the state
+rownames(mean_state) <- mean_state[,1]
+mean_state <- mean_state[,-1]
+head(mean_state)
+
+#centering and scaling
+z_mean_state<-scale(mean_state,scale=TRUE,center = T) 
+```
+
+Once our data is scaled and centered we can start to look for patterns in our data. We will look at attempting to find clusters between the states using a k-means and hierarchical clustering algorithms.
+
+#### K-Means Clustering
+
+The first step in this process is to find the optimal number of clusters to use. This hyperparameter can be found by iterating over the data for a particular number of clusters, in this case we look at clusters between 1-20 with each iteration being done 25 times per cluster number. After this we will look at how the within sums of squares (wss) will decrease for each additional cluster.
+
+```{r}
+#storing the wss in a list for each cluster
+wss_list = list() 
+
+#looping over the data frame 20 times for each cluster number
+for (i in 1:20) {
+  k_means = kmeans(z_mean_state, centers=i, nstart=25)
+  wss_list[[i]]=tibble(k=i, ss=k_means$tot.withinss)
+} 
+
+#store the obtained wss in a list
+wss_list = bind_rows(wss_list)
+
+```
+
+We then make a plot comparing the number of clusters with the wss to choose the optimal amount of clusters. We try to find an elbow pattern where the wss does not decrease enough to warant another cluster.
+
+```{r}
+#plotting wss v number of clusters
+ggplot(wss_list, aes(x = k, y = ss))+ geom_line()+ geom_point()+ xlab("Number of Clusters")+ ylab("Within groups sum of squares (WSS)")
+```
+
+The plot shown does not have a nice elbow shape for us to be able to choose a specific cluster number but we decide to choose 5 clusters as this reduces the wss enough while keeping the number of clusters low.
+
+Now that we have our hyperparameter we can rerun the algorithm on only clusters with 50 different k means starting points
+
+```{r}
+#rerunning the kmeans algo with 50 different starts
+k_means_final = kmeans(z_mean_state, 4, nstart = 50)
+print(k_means_final)
+```
+
+Here we can see the means for each clusters on the variables in our data frame and which state belongs to each cluster. To have a more visual understanding we plot this solution on a 2 dimensional plane.
+
+Plotting the clusters on a 2-dimensional plane:
+
+```{r, warning=FALSE}
+#Plotting the solution using fviz
+fviz_cluster(k_means_final, z_mean_state, ellipse.type = "norm")
+```
+
+Our first immediate observation is the small first cluster composed only of the states of DC and NY which stand out far out of the rest. This cluster has very high mean of grocery per square mile ( mean of 4.25 standard deviations) while also having the lowest means of obesity and cancer. This cluster also has the highest mean income. Not surprisingly it also has the highest mean population density. The other 3 clusters do not separate the states nicely. The 3rd cluster does have the highest obesity means while also having the lowest amount of grocery per sq mile. Additionally this cluster has the highest rates of depression and coronary heart disease (CHD) while also having the lowest population density and mean income of all the clusters.
+
+#### Hierarchical Clustering
+
+Our second method is to look at hierarchical clustering to see if we can come up with more distinct clusters. Once again we look at the wss to check the optimal amount of clusters:
+
+```{r}
+#plotting the hclust optimal clusters
+fviz_nbclust(z_mean_state, FUN = hcut, method = "wss")
+```
+
+We will use the same amount of clusters as found in our previous clustering algorithm,k=4, which will allow us to compare the two. With hierarchical clustering we can easily plot the dendrogram to have a nice visualization of the clusters.
+
+```{r}
+#Hierchical clustering using Hcut algo
+hierch_clust = hcut(z_mean_state, k=4, hc_method = "complete")
+
+#plotting the dendogram 
+plot(hierch_clust, cex = 0.55,hang = -1)
+rect.hclust(hierch_clust,  k = 4,border = 3:6)
+
+```
+
+We see that with the 4 cluster solutions we get quite different ones than with the kmeans algorithm. We get one giant cluster and then three smaller ones with NY being its own cluster. Visualizing this solution on a 2d plane we get the following results:
+
+```{r}
+#visualisation of the solution
+fviz_cluster(hierch_clust)
+```
+
+Using Hierchical classification we get much more defined clusters than using kmeans. We once again observe that NY is very far away from the rest of the data.
+
+#### PCA
+
+We also try to use principal component analysis (PCA) to reduce the dimensionality of our data.
+
+Looking at the percentage of variation explained by each principal component:
+
+```{r}
+# creating the pca object
+pca = prcomp(z_mean_state)
+# plotting variance explained by each principal component
+fviz_eig(pca)
+```
+
+Plotting the solution with the first two principal components on a biplot :
+
+```{r}
+#Biplot of first two dimensions
+fviz_pca_biplot(pca)
+```
+
+We see that density and grocery per sq mile are very close together and go in the same direction. We also observe that most of the health related variables go opposite of the mean income variable which would imply that this is a more important factor in understanding health problems in certain states. Grocery store access also seems to play a role in health measures as they each load in different directions on the first principal component As this analysis was done at a state level, we lose a lot of information on individual food deserts in states. Especially when food deserts often have lower populations and thus are drowned out by the large cities which much better access to grocery stores.
+
+This is why we now focus on the counties in a single state.
+
+### 3.3.2 Analysis By County (for a specific state)
+
+To get a better understanding of how food deserts work in specific states, we first sorted the data by grocery store per square mile and by descending population.
+
+```{r}
+#Sorting the date by grocery and population
+ordered <- arrange(dat,grocery_persqmile,desc(dat$tot_pop))
+
+#looking at the number of times each state appears in the data set
+nState <- ordered %>% dplyr::count(ordered$state,sort = TRUE)
+names(nState)[1] <- "state"
+```
+
+Next we took the first ordered 10,000 data points to look where most of the food deserts were located.
+
+```{r}
+ordered_low <- ordered[1:10000,]
+
+#counting the number of appearances of each state
+nLow <- ordered_low %>% dplyr::count(ordered_low$state,sort = TRUE)
+names(nLow)[1] <- "state"
+
+#making a new variable which is the amount of appearances of a zip code in a certain state in the lowest 10,000 over the total amount of zipcodes in that certain state
+nTot <- merge(nLow,nState, by="state")
+nTot["%lowFoodAccess"] <- nTot$n.x/nTot$n.y
+nTot_ordered <- arrange(nTot,desc(nTot$'%lowFoodAccess'))
+
+nTot_ordered
+```
+
+We can observe that Wyoming, Alaska and Montana have a very high percentage of entries in the lowest 10,000. Thus we decide to focus our research on WY to see if we can differentiate between the counties in Wyoming.
+
+```{r}
+#Selecting the datapoints belonging in Wyoming
+desert_WY <- subset(ordered, ordered$state=="WY")
+desert_WY <- desert_WY[-11]
+
+#Aggregating the mean variables for each county with the weight being the population
+my_dt <- data.table(desert_WY)
+df <- data.frame(my_dt[, lapply(.SD, weighted.mean, w=.SD$tot_pop), by=county])
+df <- df[,-10]
+
+#changing the row names to the county names and removing the total pop variable
+rownames(df) <- df[,1]
+df <- df[,-1]
+head(df)
+
+#Scaling our data
+#centering and scaling
+z_mean_county<-scale(df,scale=TRUE) 
+
+```
+
+Now that we have the aggregate counties we can continue our unsupervised analysis.
+
+### PCA and K-means Clustering
+
+We will try to perform a pca and then a following clustering on the first two principal components on the counties in Wyoming to better understand the relationship between the variables.
+
+```{r}
+#PCA 
+pca_WY = prcomp(z_mean_county)
+
+# Eigenvalues to check how much of the variation is explained by each principal component
+
+fviz_eig(pca_WY)
+
+```
+
+We see that the first three principal components can explain around 75% of the variation in our data.
+
+Plotting the first two principal components on a biplot we get this solution :
+
+```{r}
+#Biplot of dimensions
+fviz_pca_biplot(pca_WY,label = "var")
+       
+```
+
+The results for Wyoming seem a lot more clear cut than for states over all. The first principal component seems to show the negative correlation between health problems and grocery stores per sq mile plus mean income. When we focused on the grocery loading of Wyoming we see that counties that have less grocery stores per square mile also seem to have much higher counts of cardiovascular heart diseases (CHD), cancer rates and cholesterol. Depression does not seem to be correlated with any of the features in our data. We also observe that obesity appear more in counties with higher proportions of persons without a high school degree.
+
+We then try to cluster the counties in Wyoming using the first two principal components. We first look at the optimal amount of clusters with kmeans again :
+
+```{r}
+#We first extract the first two principal components
+WY_pca = pca_WY$x[, c("PC1", "PC2")]
+
+#storing the wss in a list for each cluster
+wss_list_WY = list() 
+
+#looping over the data frame 20 times for each cluster number
+for (i in 1:20) {
+  k_means = kmeans(WY_pca, centers=i, nstart=25)
+  wss_list_WY[[i]]=tibble(k=i, ss=k_means$tot.withinss)
+} 
+
+#store the obtained wss in a list
+wss_list_WY = bind_rows(wss_list_WY)
+
+
+# Plot sum of squares vs. number of clusters
+ggplot(wss_list_WY, aes(x=k, y=ss)) + geom_line() + 
+  xlab("Number of Clusters") + 
+  ylab("Within groups sum of squares")
+
+```
+
+This time a clear elbow shape appears at k=4 so we decide to rerun the algorithm with 4 clusters
+
+```{r,warning=FALSE}
+# Compute again with k = 4 and visualize
+WY_pca_res <- kmeans(WY_pca, 4, nstart = 50)
+fviz_cluster(WY_pca_res, WY_pca, ellipse.type = "norm")
+```
+
+The clusters allows us to observe some differentiation between counties. We see that Teton County, which is one of the most concentrated counties in the US in terms of Wealth and Sublette County, both ranked 12th and 13th respectively in terms of healthiest counties by the U.S. News & World Report in collaboration with the Aetna Foundation, are quite separate from the rest of the counties. From the previous biplot we know that counties with lower scores on the first principal component will have higher rates of health problems and lower amounts of grocery stores. This can be confirmed with the 4th cluster with counties such as Big Horn or Niobrara that appear on the food access research atlas as food deserts.
+
+### 3.3.3 Unsupervised Analysis Conclusion
+We observe that using clustering algorithms and principal component analysis that there seems to be a relation between health, income and grocery store availability. This result is especially prevalent in states for which lots of data points reveal food deserts. It would be interesting to continue this type of analysis for different states to see whether these conclusions continue to hold. We will look at using supervised machine learning next to better understand these relationships.
+
+
+## 3.4 Supervised Learning
+
+In this section, we test out several supervised learning models to determine the relationship between obesity and several demographic and economic predictors. We are interested in determining if obesity is related to these variables, among which is grocery store count as well. In other terms, can grocery store count, along with some of the other demographic/economic variables, be used to predict obesity?
+
+We first join the data together, clean up, and select desired variables.
+
+```{r}
+rm(list = ls())
+grocery <- read.csv('grocery.csv')
+health <- read.csv('health.csv')
+race <- read.csv('race.csv')
+income <- read.csv('income_cleaned.csv')
+edu <- read.csv('education.csv')
+```
+
+```{r clean}
+# data has all variables, dat will be used for analysis
+data <- inner_join(grocery, health, by='zcta')
+data <- inner_join(data, race, by='zcta')
+data <- inner_join(data, income, by='zcta')
+data <- inner_join(data, edu, by='zcta')
+# found an na in grocery_per1k - imputed value with median
+sum(is.na(data))
+which(is.na(data), arr.ind=TRUE)
+data$grocery_per1k[is.na(data$grocery_per1k)] <- median(data$grocery_per1k, na.rm = T) 
+sum(is.na(data))
+# remove zcta, year, Year and geolocation (lat&long) for supervised learning
+dat <- data[-c(1,2,8,9)]
+# initial linear regressions suggested that some of the age
+# ranges are not linearly associated with obesity
+dat <- dat[-c(21,22,23,24,25,26,27,28,29,30,31,32,33)]
+# and mixed race seems to have problems... multicollinearity?
+dat <- dat[-19]
+# Removing population stats due to multicollinearity 
+dat <- dat[-c(1,6,12)]
+```
+
+
+```{r zips, echo = FALSE, include = FALSE}
+summary(data$OBESITY)
+summary(data$grocery_persqmile)
+summary(data$grocery_count)
+histogram(data$grocery_count)
+# zcta = 10*** = NYC
+# Lawrence, Massachusetts 01841
+# Boston, Massachusetts 02128
+# Hartford, Connecticut 06106
+data %>% filter(grocery_count>50)
+```
+
+We prepare for model training by splitting the data into a training, validation, and test sets.
+
+```{r splits}
+
+# Train/Validation/Test split
+set.seed(33)
+sample <- sample(c(TRUE, FALSE), nrow(dat), replace=TRUE, prob=c(0.6,0.4))
+train  <- dat[sample, ]
+testvalid   <- dat[!sample, ]
+validtest <- sample(c(TRUE, FALSE), nrow(testvalid), replace=TRUE, prob=c(0.5,0.5))
+valid <- testvalid[validtest, ]
+test <- testvalid[!validtest, ]
+
+# Obesity is variable 5
+X_train <- train[-5]
+y_train <- train[5]
+X_valid <- valid[-5]
+y_valid <- valid[5]
+X_test <- test[-5]
+y_test <- test[5]
+```
+
+We generate a histogram for obesity, the response variable.
+
+```{r}
+# maybe skews left?
+histogram(train$OBESITY)
+```
+
+We also take a look at the relationship between obesity and the grocery store count per squre mile. 
+
+```{r}
+plot(train$grocery_persqmile, train$OBESITY)
+abline(lm(train$OBESITY~train$grocery_persqmile))
+```
+
+### 3.4.1 Ordinary Least Squares (OLS) Model
+
+To select our variables, we use two different methods. We first consider backward variable selection using AIC as a metric. This procedure removes 'white' and 'depression' as predictors of obesity.
+
+```{r stepAICm, echo = FALSE}
+fit.full <- lm(OBESITY ~ ., data=train)
+stepAIC(fit.full, direction = "backward")
+# Backward step selection removes:
+#   white, DEPRESSION
+
+```
+
+We use the results from the backward variable selection to fit an Ordinary Least Squares (OLS) model.
+
+```{r lm}
+# Using results from backward step to fit OLS model
+data.step <- train[-c(6,10)]
+lm.fitstep <- lm(OBESITY ~ ., data = data.step)
+summary(lm.fitstep)
+```
+
+We run F-tests to determine which variables have a significant impact on obesity.
+
+```{r FTest}
+# Based on F-value
+dropterm(fit.full, test = "F")
+fit1 <- update(fit.full, ~ . - white)
+dropterm(fit1, sorted = TRUE, test = "F")
+
+fit2 <- update(fit1, ~ . - DEPRESSION)
+dropterm(fit2, sorted = TRUE, test = "F")
+
+# grocery_per_1k not signif
+fit3 <- update(fit2, ~ . - grocery_per1k)
+dropterm(fit3, sorted = TRUE, test = "F")
+
+summary(fit3)
+```
+
+We run some diagnostics to determine if the fit is correct.
+
+```{r diagnostics}
+pred = predict(fit3)
+sres = stdres(fit3)
+student = rstandard(fit3)
+# Variance looks fairly stable
+plot(pred, sres, pch=16); abline(h=0)
+plot(pred, student, pch=16); abline(h=0)
+# Variance increases with OBS but not wider/narrower spread
+plot(train$OBESITY, sres, pch=16); abline(h=0)
+```
+
+```{r residualPlot}
+# residual values increase with obesity, though variance doesn't change much
+plot(sres, xlab = "Index", ylab = "Standardized residual", ylim = c(-4.0,4.0))
+abline(h = -3.0, lty = 2)
+abline(h = 3.0, lty = 2)
+```
+
+```{r diagnostics2}
+boxplot(student, pch=16)
+# that's a lot of potential outliers? but maybe ok for 17k obs?
+
+qqnorm(student, pch=16); qqline(student)
+# May not be normal at the ends, middle section looks good
+
+# Shapiro-Wilk test for normality
+# H0: model errors are normally distributed
+# !must have 5000 or fewer observations! we have 17k in training
+#shapiro.test(student)
+
+
+# Breusch-Pagan - test for Homoskedasticity
+# H0: residuals are homoskedastic
+bptest(fit3, studentize=F)
+# BP = 840.07, df = 20, p-value < 2.2e-16
+# Reject H0 in favor of H1 - residuals are heteroskedastic
+
+boxcox(fit3, lambda=seq(-2, 2, 0.1), plotit = T)
+# lambda ~ 1 => no transformation
+
+# Multicollinearity?
+multico = solve(cor(train[, -5]))
+summary(multico)
+# Now, no values above 10! 
+# Multicollinearity fixed by removing population variables
+```
+
+```{r WLS, include=FALSE}
+# Weighted Least Squares Analysis
+datafit3 <- train[-c(3,6,10)]
+# Fit using OLS
+fit <- lm(OBESITY~., data = datafit3)
+# Calculate residuals
+resid <- residuals(fit)
+# regress sq or abs resids on regressors from OLS
+# abs(resid) estimates sigma
+# resid^2 estimates sigma^2
+stdev <- lm(abs(resid)~., data = datafit3[-4])
+summary(stdev)
+# Calculate weights from estimated Std Dev w=1/s^2
+weights <- 1/stdev$fitted^2
+# Fit regression with weights
+wls <- lm(OBESITY~., data = datafit3, weights=weights)
+summary(wls)
+
+# Breusch-Pagan test - p<0.001, still heteroskedastic
+bptest(wls, studentize=F)
+wstudent = rstandard(wls)
+qqnorm(wstudent, pch=16); qqline(wstudent)
+
+# These will still show heteroskedasticity
+plot(datafit3$OBESITY,resid(wls))
+# With weights, heteroskedasticity should now be gone
+plot(datafit3$OBESITY,resid(wls)*sqrt(weights),ylab="Weighted residuals")
+
+# Fitted/Predicted vs residuals
+wpred = predict(wls)
+wsres = stdres(wls)
+wstudent = rstandard(wls)
+plot(wpred, wsres, pch=16); abline(h=0)
+plot(wpred, wstudent, pch=16); abline(h=0)
+
+skedastic::white_lm(fit3)
+skedastic::white_lm(wls)
+
+```
+
+The fitted value versus residual plot shows that there may not be much concern with heteroskedasticity. However, since the Breusch-Pagan test rejected homoskedasticty (as did the White test) , We fit a weighted least squares model, which did not improve the situation as far as Breusch-Pagan or White are concerned. We thus will stick with OLS as done in fit3 for ease of interpretability.
+
+```{r lm.F}
+# Using results from manual F-Test variable selection to fit OLS model
+data.F <- train[-c(3,6,10)]
+lm.fitF <- lm(OBESITY ~ ., data = data.F)
+summary(lm.fitF)
+```
+
+### 3.4.2 XGBoost Model
+
+```{r xgboost}
+# XGBoost is an ensemble method, similar to Random Forest
+# Except not random, tree N+1 is based on the loss from tree N
+# https://xgboost.readthedocs.io/en/latest/R-package/xgboostPresentation.html
+# XGB Params: https://xgboost.readthedocs.io/en/latest/parameter.html?highlight=objective
+xgbtrain = xgb.DMatrix(as.matrix(sapply(X_train, as.numeric)), label=y_train$OBESITY)
+xgbvalid = xgb.DMatrix(as.matrix(sapply(X_valid, as.numeric)), label=y_valid$OBESITY)
+watchlist <- list(train=xgbtrain, test=xgbvalid)
+
+# max.depth = 4 and nrounds=10 yielded minimum test-rmse
+xgb.fit <- xgb.train(data=xgbtrain, max.depth = 4, eta = 1, nthread = 2, nrounds = 10, 
+                   watchlist=watchlist, objective = "reg:squarederror")
+# linear boosting - not as good
+lin.fit <- xgb.train(data=xgbtrain, booster = "gblinear", nthread = 2, nrounds=10, 
+                 watchlist=watchlist, objective = "reg:squarederror")
+summary(xgb.fit)
+
+# Plot of variable importance
+# Gain - is the improvement in accuracy brought by a feature to the branches it is on
+# Cover - measures the relative quantity of observations concerned by a feature
+# Frequency - is a simpler way to measure the Gain. It just counts the number of
+#   times a feature is used in all generated trees
+#   !You should not use it (unless you know why you want to use it)!
+importance_matrix <- xgb.importance(model = xgb.fit)
+print(importance_matrix)
+xgb.plot.importance(importance_matrix = importance_matrix)
+```
+
+xgboost's gain shows that percent of the population of age 45-65 with a bachelor's degree or greater, mean income,  percent of population with chronic heart disease, percent of population which is black and percent of population with cancer are the five most important variables in determining percent of population with obesity. Number of grocery stores per square mile is the eigth most important variable.
+
+```{r xgboost2}
+# View model trees
+# with depth=5 the tree ends up having 608 nodes/leaves
+# Commented out since output isn't helpful - >600 lines describing the tree
+#xgb.dump(xgb.fit, with_stats = TRUE)
+
+
+# For example tree with depth = 2... plotting a 5 level tree is not helpful
+# With this many variables, its still not visible
+xgb.fit2 <- xgb.train(data=xgbtrain, max.depth = 4, eta = 1, nthread = 2, nrounds = 10, 
+                     watchlist=watchlist, objective = "reg:squarederror")
+xgb.plot.tree(model = xgb.fit2, trees=0) # just from 0th root node
+```
+
+### 3.4.3 Model Comparison
+
+```{r}
+# Compare RMSE of linear and XGB Models
+xgbtest = xgb.DMatrix(as.matrix(sapply(X_test, as.numeric)), label=y_test$OBESITY)
+
+linpred <- predict.lm(fit3, test)
+xgbpred <- predict(xgb.fit, xgbtest)
+
+# RMSE of linear model on test set
+sqrt(mean((test$OBESITY - linpred)^2))
+
+# RMSE of XGBoost model on test set
+sqrt(mean((test$OBESITY - xgbpred)^2))
+```
+
+
+### 3.4.4 Supervised Analysis Conclusion
+
+When controlling for variables such as income, race, education and various illnesses, we have found a negative association between the number of grocery stores per square mile in a zip code area and percent of inhabitants who are obese. For every increase of one grocery store per square mile, obesity decreases by 0.0867%. We found some other interesting associations with obesity. As the percentage of inhabitants who are black increases, so does obesity. Obesity decreases with income and education. 
+
+Using xgboost to look at non-linear associations with obesity, we found that education (percent of inhabitants between 45 and 65 years of age with a bachelors or greater), mean income and being black are important variables in determining obesity. Number of grocery stores per square mile, to a lesser degree, is also important to explaining obesity.
+
+With a RMSE of 2.986 our linear model, fit3, outperformed the XGBoost model, which had a RMSE of 3.034, on the test data. 
+
+## 3.5 API Data & Sentiment Analysis
+In this section, we look at Yelp reviews for grocery stores and fast food restaurants in different areas of the United States. We compare data across locations in the US which are considered food deserts and locations with abundant access to a variety of grocery stores and healthy options. The goal of this section is to explore the following:
+
+* How do review counts, ratings, and categories of stores available vary between areas of the US which are considered food deserts vs. those which are not?
+* Between the two types of areas, how do review counts and average ratings compare between grocery stores and fast food restaurants?
+* Looking at the customer reviews, is there a noticeable difference between the reviews written for grocery stores in areas which are considered food deserts vs. areas which are not? What about reviews of fast food restaurants?
+
+By exploring these questions, we hope to gain insight into how customer attitudes and opinions vary between different types of stores and more importantly, between areas which are considered food deserts vs. not.
+
+### 3.5.1 Getting Food Desert Location Data
+In order to correctly specify which areas of the United States to look at Yelp reviews for, we first have to come up with a list of areas which are considered food deserts and a list or areas which are not considered food deserts. We begin this process by loading in data from the Food Access Research Atlas generated by the United States Department of Agriculture (USDA). This data set was downloaded from the [USDA website](https://www.ers.usda.gov/data-products/food-access-research-atlas/download-the-data/).
+
+```{r}
+# read in food desert data
+food_des_data <- read.csv('food_access_data.csv')
+```
+
+Next, we find areas of the US that are food deserts by only keeping rows where the LILATracts_1And20 and LILATracts_Vehicle flags are both 1. These two variables have the following meaning, as defined by the USDA:
+
+* *LILATracts_1And20*: flag for low-income census tracts where a significant number or share of residents is more than 1 mile (urban) or 20 miles (rural) from the nearest supermarket.
+* *LILATracts_Vehicle*: flag for low-income census tracts where more than 100 housing units do not have a vehicle and are more than ½ mile from the nearest supermarket, or a significant number or share of residents are more than 20 miles from  nearest supermarket.
+
+We keep track of these low-income, low-access areas by keeping their CensusTract- a unique identifier for a geographic region defined for census-purposes. We additionally add a column to flag that these tracts are food deserts.
+
+```{r}
+# find all low-income low-access areas
+food_desert <- food_des_data[food_des_data$LILATracts_1And20 == 1 & 
+                                food_des_data$LILATracts_Vehicle == 1, ]
+
+# keep census tract number and add a flag for food desert
+food_desert <- food_desert[1]
+food_desert$food_desert <- 1
+```
+
+Next, we find areas in the US that are not food deserts by keeping only rows where all the flags for low income and low access are set to 0. In a similar fashion as before, we keep track of these areas by keeping their CensusTract and we add a flag column for food deserts (this time set to 0 as these areas are not food deserts).
+
+```{r}
+# find non-deserts (non low-income and non low-access)
+non_desert <- food_des_data[food_des_data$LowIncomeTracts == 0 &
+                               food_des_data$LA1and10 == 0 &
+                               food_des_data$LAhalfand10 == 0 &
+                               food_des_data$LA1and20 == 0 &
+                               food_des_data$LATracts_half == 0 &
+                               food_des_data$LATracts1== 0 &
+                               food_des_data$LATracts10 == 0 &
+                               food_des_data$LATracts20 == 0, ]
+
+# keep census tract number and add a flag for food desert
+non_desert <- non_desert[1]
+non_desert$food_desert <- 0
+```
+
+The Yelp review API allows us to specify the location for the area we want to look at by specifying the longitude and the latitude. Therefore, we now need to add longitude and latitude information to our food deseert data (which currently only contains census tract IDs). We accomplish this by loading in a Census Tracts file downloaded from the [US Census Bureau](https://www.census.gov/geographies/reference-files/time-series/geo/gazetteer-files.2010.html). We combine the longitudes and latitudes from that file with our food desert data frame by joining the frames based on the tract ID. Following the join, we check to ensure there are no missing values in the final data set.
+
+```{r}
+# combine food desert and non-desert frames
+food_deserts <- rbind(food_desert[sample(nrow(food_desert), 600), ], 
+                      non_desert[sample(nrow(non_desert), 600), ])
+
+# read in census tract data
+census_tracts <- read.delim("2021_Gaz_tracts_national.txt")
+census_tracts <- census_tracts %>% dplyr::rename(CensusTract=GEOID)
+
+# add longitude/latitude data to food desert frame
+food_deserts <- inner_join(food_deserts, census_tracts[c(2,7,8)], by='CensusTract')
+
+# check to make sure there are no missing values 
+sum(is.na(food_deserts))
+```
+
+### 3.5.2 Getting Yelp Ratings and Reviews
+
+Now that we have a list of locations considered food deserts and non-deserts, we can start requesting Yelp rating and review data.
+
+We start off by setting up the API key and data frames that will be used to store the ratings. We create separate data frames to store information for grocery stores and fast food restaurants. Since we will be requesting 5 stores per location, we multiply the total row numbers by 5. 
+
+```{r}
+# API and data frame setup
+yelp_key <- 'nvkQTNqwyxo-nPeAoWCP6Zm3kyEg4416UpsiTX_olm40tNXis8L42hajgU7P36Hv8aCVB3BFHvGrItUCT-4gkIi1wsJfkgUVDRNoYbOdJ3MRrCyr3goshIZLLl6oYnYx'
+num_rows <- nrow(food_deserts)
+
+# creating empty data frames
+grocery_general <- data.frame(matrix(ncol = 6, nrow = num_rows*5))
+fastfood_general <- data.frame(matrix(ncol = 6, nrow = num_rows*5))
+
+# renaming columns
+cols <- c("store_name", "store_id", "review_count", "ratings", "categories",
+          "food_desert")
+colnames(grocery_general) <- cols
+colnames(fastfood_general) <- cols
+```
+
+The first set of API requests will be made for the Business Search endpoint. This endpoint returns a list of stores and general information about them based on the location that is provided. To fill in the data frames, we created a function that goes through our list of locations and requests 5 stores per location. We then store some basic information like the store ID, review count, and average rating for each store.
+
+```{r}
+# this function returns a data frame with general store information based on requested locations and store type
+get_general_ratings <- function(food_deserts, num_rows, store_general, store_type, yelp_key) {
+  for (row in 1:num_rows) {
+    # get longitude and latitude of location
+    lat <- food_deserts[row, "INTPTLAT"]
+    long  <- food_deserts[row, "INTPTLONG"]
+    
+    # request a list of 5 stores of specified type closest to the location
+    params <- list('latitude' = lat, 'longitude' = long, 'categories' = store_type,
+                   'limit' = 5)
+    result <- GET("https://api.yelp.com/v3/businesses/search",
+                  add_headers(Authorization = paste("Bearer", yelp_key)),
+                  query = params)
+    
+    # extract query results
+    res_JSON <- fromJSON(httr::content(result, type = "text", encoding = "UTF-8"))
+    
+    # save parameters from the results to the data frame
+    total_found <- length(res_JSON$businesses$name)
+    if(total_found > 0){
+      for(store in (total_found-1):0){
+        store_general[row*5-store,"store_name"] <- res_JSON$business$name[store+1]
+        store_general[row*5-store,"store_id"] <- res_JSON$business$id[store+1]
+        store_general[row*5-store,"review_count"] <- 
+                                  res_JSON$business$review_count[store+1]
+        store_general[row*5-store,"ratings"] <- res_JSON$business$rating[store+1]
+        categories <- res_JSON$businesses$categories[[store+1]]$alias
+        store_general[row*5-store,"categories"] <- paste(categories, collapse=",")
+        store_general[row*5-store,"food_desert"] <- food_deserts[row, "food_desert"]
+      }
+    }
+  }
+  return(store_general)
+}
+```
+
+After creating the function, we make a call to get data on grocery stores. In the code below, the function call is commented out in order to prevent having to make all API requests every time the notebook is compiled (we are limited to only 5,000 requests per day). Instead, we load in a saved CSV files with the output that we saved the first time the function was run. 
+
+After the data frame is filled in, we remove any rows which are duplicates (cases where two locations were close to each other and thus the same stores were selected) as well as any rows with missing data (no reviews).
+
+```{r}
+# collect general data on  grocery stores
+#grocery_general <- get_general_ratings(food_deserts, num_rows, grocery_general, 
+#                                       'grocery', yelp_key)
+#write.csv(grocery_general,"grocery_general_raw.csv", row.names = FALSE)
+grocery_general <- read.csv('grocery_general_raw.csv')
+
+# remove all rows with missing values and duplicates and save final data frame
+grocery_general <- grocery_general[complete.cases(grocery_general), ]
+grocery_general <- grocery_general[!duplicated(grocery_general),]
+
+kable_styling(kable(head(grocery_general)))
+```
+
+We repeat the same process described above to get fast food restaurant data (category name for fast food is 'hotdogs' using the Yelp API).
+
+```{r}
+# collect general data on fast food restaurants
+#fastfood_general <- get_general_ratings(food_deserts, num_rows, fastfood_general, 
+#                                       'hotdogs', yelp_key)
+#write.csv(fastfood_general,"fastfood_general_raw.csv", row.names = FALSE)
+fastfood_general <- read.csv('fastfood_general_raw.csv')
+
+# remove all rows with missing values and duplicates and save final data frame
+fastfood_general <- fastfood_general[complete.cases(fastfood_general), ]
+fastfood_general <- fastfood_general[!duplicated(fastfood_general),]
+
+kable_styling(kable(head(fastfood_general)))
+
+```
+
+We now have all the necessary general data for the requested locations and can move ro requesting actual customer reviews. For this part, we are using the Reviews endpoint of the Yelp API. 
+
+We once again start by creating empty data frames to store the reviews. Since Yelp limits the response to 3 reviews per store, we create 3 columns to store each of the reviews, and 3 to store each of the ratings. We additionally copy over the store IDs and food desert status from previous data frames.
+
+```{r}
+# setting up data frame to collect reviews
+grocery_reviews <- data.frame(matrix(ncol = 8, nrow = nrow(grocery_general)))
+fastfood_reviews <- data.frame(matrix(ncol = 8, nrow = nrow(fastfood_general)))
+
+# renaming columns
+cols <- c("store_id", "review_1", "review_2", "review_3", "rating_1",
+          "rating_2", "rating_3", "food_desert")
+colnames(grocery_reviews) <- cols
+colnames(fastfood_reviews) <- cols
+
+# adding store ID and food desert status to data frame
+grocery_reviews$store_id <- grocery_general$store_id
+fastfood_reviews$store_id <- fastfood_general$store_id
+grocery_reviews$food_desert <- grocery_general$food_desert
+fastfood_reviews$food_desert <- fastfood_general$food_desert
+```
+
+To fill in the data frames, we created another function that goes through the of stores and gets the reviews and ratings.
+
+```{r}
+# this function returns a data frame with store ratings and reviews
+get_reviews <- function(review_df, yelp_key) {
+  for (row in 1:nrow(review_df)) {
+    # get store ID and set up URL
+    business_id <- review_df[row, "store_alias"]
+    url <- paste0("https://api.yelp.com/v3/businesses/", business_id, "/reviews")
+    
+    # request reviews for store & extract text
+    result <- GET(url, add_headers(Authorization = paste("Bearer", yelp_key)))
+    
+    if(result$status_code == 200)
+      res_JSON <- fromJSON(httr::content(result, type = "text", encoding = "UTF-8"))
+    
+    # save reviews to the data frame
+    total_found <- length(res_JSON$reviews$text)
+    if(total_found > 0){
+      for(review in 1:total_found){
+        review_df[row,paste("review_",review,sep="")] = res_JSON$reviews$text[review]
+        review_df[row,paste("rating_",review,sep="")] = res_JSON$reviews$rating[review]
+      }
+    }
+  }
+  return(review_df)
+}
+```
+
+To complete the data collection process, we save the final files and remove any duplicate rows. Once again, the function calls are commented out to prevent waiting for and running over the API limit, but a previously saved version of the raw data is loaded in.
+
+```{r}
+#grocery_reviews <- get_reviews(grocery_reviews, yelp_key)
+grocery_reviews <- read.csv('grocery_reviews_raw.csv')
+grocery_reviews <- grocery_reviews[!duplicated(grocery_reviews),]
+kable_styling(kable(head(grocery_reviews)))
+```
+
+```{r}
+#fastfood_reviews <- get_reviews(fastfood_reviews, yelp_key)
+fastfood_reviews <- read.csv('fastfood_reviews_raw.csv')
+fastfood_reviews <- fastfood_reviews[!duplicated(fastfood_reviews),]
+kable_styling(kable(head(fastfood_reviews)))
+```
+
+This completes our data collection process for Yelp reviews and ratings.
+
+### 3.5.3 Analyzing Yelp Data
+
+To analyze the Yelp data, we take 2 approaches:
+
+* analyzing general data: for the general data collected (review counts and overall rating), we compare the average ratings and review counts between fast food restaurants and grocery stores within each category and between each category (categories being food desert vs. non-desert)
+* analyzing review data: we use NLP to compare differences in sentiment between fast food restaurants and grocery stores within each category and between each category (categories being food desert vs. non-desert)
+
+#### Analyzing & Comparing General Data
+
+##### Grocery Store Ratings & Review Counts (Food Deserts vs. Non-Deserts)
+We first look at overall grocery store ratings for food deserts vs. non-deserts. We construct a histogram to compare rating distributions.
+
+```{r echo = FALSE}
+# plot grocery store histogram of ratings for desert vs non desert 
+mu <- ddply(grocery_general, "food_desert", summarise, grp.mean=mean(ratings))
+p1<-ggplot(grocery_general, aes(x=ratings, group = food_desert, fill=factor(food_desert))) +
+  geom_histogram(color = 1, position = "dodge", alpha=0.5, binwidth=0.2) +
+  geom_vline(data=mu, aes(xintercept=grp.mean, color=factor(food_desert)),
+             linetype="dashed") +
+  scale_fill_manual(values = c("darkgreen", "red")) + 
+  scale_color_manual(values = c("darkgreen", "red")) +
+  theme(legend.position="top") + ggtitle("Grocery Store Ratings") +
+  xlab("Ratings") + ylab("Frequency")
+
+# plot grocery store histogram of review counts for desert vs non desert 
+p2<-ggplot(fastfood_general, aes(x=review_count, group = food_desert, fill=factor(food_desert))) +
+  geom_histogram(color = 1, position = "dodge", alpha=0.5, binwidth=100) +
+  scale_fill_manual(values = c("darkgreen", "red")) + 
+  scale_color_manual(values = c("darkgreen", "red")) +
+  theme(legend.position="top")+ ggtitle("Grocery Store Review Counts") +
+  xlab("Review Counts") + ylab("Frequency")
+
+grid.arrange(p1, p2, ncol=2)
+```
+
+The histogram shows that grocery store ratings are similarly distributed between food deserts and non-deserts, with most stores getting a rating of around 4. However, the average rating, shown by the dashed line, does tend to be slightly lower for areas which are not food deserts. Review counts also have a similar distribution between the two areas, with most stores getting very few reviews.
+
+To formally test if the means of reviews are different, we conduct a Mann-Whitney U test (since the data is skewed and not normally distributed). The null hypothesis tested is that the means between the two groups (food desert and non-desert) are the same.  
+
+```{r}
+wilcox.test(ratings~ food_desert, data = grocery_general, exact = FALSE)
+```
+
+Since the p-values are both < 0.05, we reject the null hypotheses and conclude that the mean rating for grocery stores in food desert areas is higher than the mean rating of grocery stores in non-desert areas. The means between review counts are not compared as the number of reviews can laregaly be population size dependent, which we do not control for.
+
+##### Fast Food Ratings & Review Counts (Food Deserts vs. Non-Deserts)
+
+We repeat the same process for fast food ratings.
+
+```{r echo = FALSE}
+# plot fast food histogram of ratings for desert vs non desert 
+mu <- ddply(fastfood_general, "food_desert", summarise, grp.mean=mean(ratings))
+p1<-ggplot(fastfood_general, aes(x=ratings, group = food_desert,fill=factor(food_desert))) +
+  geom_histogram(color = 1, position = "dodge", alpha=0.5, binwidth=0.2) +
+  geom_vline(data=mu, aes(xintercept=grp.mean, color=factor(food_desert)),
+             linetype="dashed") +
+  scale_fill_manual(values = c("darkgreen", "red")) + 
+  scale_color_manual(values = c("darkgreen", "red")) +
+  theme(legend.position="top") + ggtitle("Fast Food Store Ratings") +
+  xlab("Ratings") + ylab("Frequency")
+
+# plot fast food histogram of review counts for desert vs non desert 
+p2<-ggplot(fastfood_general, aes(x=review_count, group = food_desert, fill=factor(food_desert))) +
+  geom_histogram(color = 1, position = "dodge", alpha=0.5, binwidth=100) +
+  scale_fill_manual(values = c("darkgreen", "red")) + 
+  scale_color_manual(values = c("darkgreen", "red")) +
+  theme(legend.position="top")+ ggtitle("Fast Food Review Counts") +
+  xlab("Review Counts") + ylab("Frequency")
+
+grid.arrange(p1, p2, ncol=2)
+```
+
+Once again, we notice that although the general distribution of ratings is similar between the areas, the ratings for fast food in food desert areas is slightly higher. Review counts also have a similar distribution between the two areas, with most stores getting very few reviews. We repeat the Mann-Whitney U test for comparing the mean of ratings.
+
+```{r}
+# test if the means are equal
+wilcox.test(ratings~ food_desert, data = fastfood_general, exact = FALSE)
+```
+
+The differences in means us once again < 0.05 and therefore significant. We conclude that the mean rating for fast food restaurants in food deserts is also higher than the mean for non-deserts.
+
+In general, it appears that ratings and review counts for both grocery stores and fast food restaurants are higher in food desert areas. 
+
+#### Analyzing & Comparing Reviews (NLP)
+_Note: this section was completed using the help of [THIS](https://www.r-bloggers.com/2016/07/does-sentiment-analysis-work-a-tidy-analysis-of-yelp-reviews/) tutorial_ \
+To analyze review data, we first create data frames that stack all reviews together (1 row per review as opposed to 1 business and 3 reviews per row).
+
+```{r}
+# this function creates a data frame with all reviews, unique IDs for each review, and their rating (out of 5 stars)
+unstack_reviews <- function(review_df){
+  # unstack reviews and ratings
+  reviews_text <- data.frame(review_df[8], stack(review_df[2:4]))
+  reviews_stars <- data.frame(review_df[8], stack(review_df[5:7]))
+  
+  # combine in a new data frame
+  final_reviews <- data.frame (food_desert = reviews_text$food_desert,
+                               text  = reviews_text$values,
+                               stars = reviews_stars$values)
+  
+  # add a unique ID to each review
+  final_reviews$review_id <- 1:length(final_reviews$text)
+  
+  return(final_reviews)
+}
+```
+
+```{r warnings = FALSE}
+# get review data frames for each category
+final_grocery <- unstack_reviews(grocery_reviews)
+final_fastfood <- unstack_reviews(fastfood_reviews)
+
+# join all reviews together
+final_grocery$fast_food <- 0
+final_fastfood$fast_food <- 1
+
+all_reviews <- rbind(final_grocery,final_fastfood)
+
+# create categories for location and type of store
+all_reviews <- all_reviews %>%
+  mutate(category = case_when(
+    (food_desert == 1 & fast_food == 1) ~ 'food desert, fast food',
+    (food_desert == 1 & fast_food == 0) ~ 'food desert, grocery',
+    (food_desert == 0 & fast_food == 1) ~ 'non-desert, fast food',
+    (food_desert == 0 & fast_food == 0) ~ 'non-desert, grocery'))
+```
+
+To perform sentiment analysis, we will be using the AFINN lexicon from the tidytext library. This will give us words scored based on sentiment on a scale of -5 (negative sentiment) to +5 (positive sentiment).
+
+```{r}
+# set up AFINN lexicon for sentiment analysis
+afinn <- get_sentiments("afinn") %>% 
+  mutate(lexicon = "afinn", words_in_lexicon = n_distinct(word)) %>%
+  dplyr::select(word, afinn_score = value)
+kable_styling(kable(head(afinn)))
+```
+
+We first turn each review into a one-row-per-term document and perform some basic pre-processing steps including tokenization, removing stop words, and removing formatting symbols. We assess the sentiment of words used in each review by joining them with the AFINN lexicon. We get the overall sentiment score for each individual review by averaging the sentiment of the existing terms within the review.
+
+```{r}
+# split terms into rows and clean up
+review_words <- all_reviews %>%
+  dplyr::select(review_id, text, stars, food_desert, fast_food, category) %>%
+  unnest_tokens(word, text) %>%
+  filter(!word %in% stop_words$word, str_detect(word, "^[a-z']+$"))
+  
+# average sentiment ratings per review to get overall sentiment
+all_sentiments <- review_words %>%
+  inner_join(afinn, by = "word") %>%
+  dplyr::group_by(review_id, stars, food_desert, fast_food, category) %>%
+  dplyr::summarise_at(vars(afinn_score), list(sentiment = mean))
+```
+
+After getting sentiment scores, we want to ensure that the sentiment generally follows the same trend as the star ratings. In other words, grocery stores and restaurants which are rated 4-5 stars should have higher average sentiment scores than those rated 1-2 stars. The sentiment score should increase as the ratings increase. We check this by generating box-and-whisker plots.
+
+```{r echo = FALSE}
+ggplot(all_sentiments, aes(stars, sentiment, group = stars)) +
+  geom_boxplot() + xlab("Store Rating") +
+  ylab("Average Sentiment Score") + ggtitle("Sentiment Score Distributions by Rating")
+```
+
+As expected, we see that the average sentiment score increases with an increased store ratings. In each category, there are outliers and 'incorrect' classification as well, but the average seems to agree with the expectations.
+
+**Comparing Sentiment Scores Between Categories**
+
+Since the general validity of the sentiment scores has been confirmed, we can now compare the average sentiment scores between food deserts and non-deserts, as well as grocery stores and fast food restaurants.
+
+```{r}
+ggplot(all_sentiments, aes(category, sentiment, group = category)) +
+  geom_boxplot() + ggtitle("Sentiment Ratings by Category") +
+  ylab("Average Sentiment Score") + xlab('Category')
+```
+
+Based on the generated plot, we notice that the fast food ratings seem fairly consistent between areas that are food deserts and non-deserts. Non-deserts appear to have a slightly lower minimum for the average sentiment score, but the distributions are generally the same. Grocery stores, on the other hand, seem to have slightly higher sentiment scores in non-deserts in general, though the means seem fairly equal between food deserts and non-deserts. Lastly, grocery stores seem to be rated higher across the board for both food deserts and non-deserts, with higher averages and higher Q1 and Q3 values as compared to fast food restaurants.
+
+We formally test the difference between all the categories.
+
+```{r}
+wilcox.test(sentiment~ food_desert, data = 
+              all_sentiments[all_sentiments$fast_food == FALSE, ], exact = FALSE)
+```
+
+There is a significant difference in mean sentiment scores between grocery stores in food desert areas vs. non-desert areas. The mean sentiment score is higher for grocery stores in non-desert areas than the mean sentiment score for grocery stores in food deserts.
+
+```{r}
+wilcox.test(sentiment~ food_desert, data = 
+              all_sentiments[all_sentiments$fast_food == TRUE, ], exact = FALSE)
+```
+
+There is no significant difference in mean sentiment scores between fast food stores in food desert vs. and non-desert areas. 
+
+```{r}
+wilcox.test(sentiment~ fast_food, data = 
+              all_sentiments[all_sentiments$food_desert == FALSE, ], exact = FALSE)
+```
+
+There is a significant difference in mean sentiment scores between grocery stores and fast food restaurants in non-desert areas. The mean sentiment score is higher for grocery stores than it is for fast food in non-desert areas.
+
+```{r}
+wilcox.test(sentiment~ fast_food, data = 
+              all_sentiments[all_sentiments$food_desert == TRUE, ], exact = FALSE)
+```
+
+There is a significant difference in mean sentiment scores between grocery stores and fast food restaurants in food desert areas. The mean sentiment score is higher for grocery stores than it is for fast food in food desert areas.
+
+**Most Positive and Negative Words**
+
+As a last step we look at which positive and negative words appear the most in reviews for food desert areas vs. non desert areas.
+
+```{r}
+get_world_cloud <- function(review_words, category, num_reviews){
+  # select category of reviews
+  review_words <- review_words[review_words$category == category, ]
+ 
+  # ungroup and count how many times words appear in review
+  words_counted <- review_words %>%
+    dplyr::count(review_id, stars, category, word) %>%
+    ungroup() 
+  
+  # count occurances of each word and get mean rating per word
+  word_summaries <- words_counted %>%
+    group_by(word) %>%
+    dplyr::summarize(reviews = n(),
+                     uses = sum(n),
+                     average_stars = mean(stars)) %>%
+    ungroup()
+  
+  # get only words used in over num_reviews # of reviews
+  top_words <- word_summaries %>%
+    filter(reviews >= num_reviews) %>%
+    arrange(desc(average_stars))
+  # create word cloud
+  wordcloud(words = top_words$word, freq = top_words$uses, min.freq = 1,
+            max.words=50, random.order=FALSE, rot.per=0.35)
+}
+```
+
+Get POSITIVE word could for grocery stores in food deserts:
+```{r}
+par(mfrow=c(1,1))
+get_world_cloud(review_words, 'food desert, grocery', 80)
+```
+
+Get POSITIVE word could for grocery stores in non-deserts:
+```{r}
+get_world_cloud(review_words, 'non-desert, grocery', 80)
+```
+
+Based on the word clouds, there does not seem to be a huge difference in positive reviews between grocery stores in the two areas. Both clouds contain the words like variety, selection, and quality. It appears that the grocery stores in food deserts are of good quality, the main problem may be that they are just not as accessible as grocery stores in non-desert areas.
+
+# 4. Conclusion
+
+From the previous analysis, we can see that there are some patterns that can not be denied when we try to understand how the number of groceries stores affects people's health, especially obesity. 
+
+From the previous outputs of the various statistical techniques employed for this project, we can see that in every analysis income was the most important variable to predict obesity. This result seems to be instinctive of the technique used for the analysis, being a pattern that we already identify from the descriptive statistics made at the beginning of this project. From the unsupervised machine learning algorithms, we were able to identify the same pattern for zip codes with a higher number of grocery stores that were linked with the variable obesity. This can be linked to the fact that higher income is also related to a higher number of grocery stores. 
+
+We also see that our results depend on location, for example in the clustering algorithm run before there seems to be a clear difference between the state of New York and other states. New York has a higher number of grocery stores per square mile, higher income, and fewer health problems like obesity and cancer. Analyzing this for a specific state (Wyoming)  we found some similar results but some clearer relationships appeared like the effect of education.
+
+Once we started exploring with supervised machine learning we saw some new variables that seem to be highly correlated with obesity, especially the proportion of the black population in the zip code area and education. Store count per square mile has a negative association with obesity once controlling for health and demographic variables.  
+ 
+As a general observation from this project, acknowledging that having only observed data we can not assume complete causality, but this certainly allows us to understand the variables that seem to have to be related to health problems like obesity and the relationship this has with food deserts. 
+
+Using an API we try to understand if there was a significant difference between ratings on Yelp of grocery stores in areas considered food deserts and areas that were not categorized as such. We saw that there is a statistical difference in the mean rating between both, with grocery stores having a higher score in food deserts; these results were similar for fast food ratings. This trend was double-checked by running a sentiment analysis. 
+
+It is clear that food deserts in the United States are a huge problem that should be addressed, especially when this problem is affecting sensitive populations like minorities. In future studies we can do a more detailed analysis in different states, to see if the same patterns in the data appear.
+
+
+# 5. Pitch
+
+We have found there is a negative correlation between obesity and the number of grocery stores per square mile. This confirms the existence of “food deserts” and their negative impact on a community. Further, this lack of quality food and the presence of obesity are greater in areas with lower income, more black residents, and some measures of lower education level. It would seem, though more study is needed, that these findings can be extended to other health conditions, such as chronic heart disease.
+
+# 6. References
+
+**General References** 
+
+Finlay, Jessica, Li, Mao, Esposito, Michael, Gomez-Lopez, Iris, Khan, Anam, Clarke, Philippa, and Chenoweth, Megan. National Neighborhood Data Archive (NaNDA): Grocery Stores by ZIP Code Tabulation Area, United States, 2003-2017. Ann Arbor, MI: Inter-university Consortium for Political and Social Research [distributor], 2020-10-01. https://doi.org/10.3886/E123042V1
+
+Rhone, Alana, Ver Ploeg, Michele, Dicken, Chris, Williams, Ryan, and Breneman, Vince.
+
+Low-Income and Low-Supermarket-Access Census Tracts, 2010-2015, EIB-165, U.S.
+
+Department of Agriculture, Economic Research Service, January 2017.  
+
+**Programming References**\
+https://albertostefanelli.github.io/SEM_labs/KUL/labs/html_lab/SEM_lab_1.html
+
+http://www.sthda.com/english/wiki/ggplot2-box-plot-quick-start-guide-r-software-and-data-visualization
+
+https://thatdatatho.com/easily-create-descriptive-summary-statistic-tables-r-studio/
+
+http://www.sthda.com/english/wiki/ggplot2-box-plot-quick-start-guide-r-software-and-data-visualization
+
+https://www.r-bloggers.com/2016/07/does-sentiment-analysis-work-a-tidy-analysis-of-yelp-reviews/
